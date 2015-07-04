@@ -684,6 +684,8 @@ ntp_update_second(int64_t *adjust, time_t *sec)
 		adj = MAX(-5000, adjtimedelta);
 	adjtimedelta -= adj;
 	*adjust = (adj * 1000) << 32;
+
+	/* Skew time according to any adjfreq(2) adjustments. */
 	*adjust += timecounter->tc_freq_adj;
 }
 
