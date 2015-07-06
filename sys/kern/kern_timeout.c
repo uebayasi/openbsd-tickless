@@ -52,8 +52,21 @@
 #define WHEELMASK 255
 #define WHEELBITS 8
 
-struct circq timeout_wheel[BUCKETS];	/* Queues of timeouts */
-struct circq timeout_todo;		/* Worklist */
+struct timeout_cpu {
+	struct circq toc_wheel[BUCKETS];	/* Queues of timeouts */
+	struct circq toc_todo;			/* Worklist */
+
+	/*
+	 * All wheels are locked with the same mutex.
+	 */
+	struct mutex toc_mutex;
+};
+struct timeout_cpu timeout_cpu0 = {
+	.toc_mutex = MUTEX_INITIALIZER(IPL_HIGH)
+};
+#define	timeout_wheel	timeout_cpu0.toc_wheel
+#define	timeout_todo	timeout_cpu0.toc_todo
+#define	timeout_mutex	timeout_cpu0.toc_mutex
 
 #define MASKWHEEL(wheel, time) (((time) >> ((wheel)*WHEELBITS)) & WHEELMASK)
 
@@ -81,14 +94,6 @@ timeout_from_circq(struct circq *p)
 {
 	return ((struct timeout *)(p));
 }
-
-/*
- * All wheels are locked with the same mutex.
- *
- * We need locking since the timeouts are manipulated from hardclock that's
- * not behind the big lock.
- */
-struct mutex timeout_mutex = MUTEX_INITIALIZER(IPL_HIGH);
 
 /*
  * Circular queue definitions.
