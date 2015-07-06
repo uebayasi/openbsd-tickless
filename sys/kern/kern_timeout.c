@@ -31,6 +31,7 @@
 #include <sys/timeout.h>
 #include <sys/mutex.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/queue.h>			/* _Q_INVALIDATE */
 
 #ifdef DDB
@@ -148,13 +149,28 @@ timeout_from_circq(struct circq *p)
  */
 
 void
-timeout_startup(void)
+timeout_init(struct timeout_cpu *toc)
 {
 	int b;
 
-	CIRCQ_INIT(&timeout_todo);
-	for (b = 0; b < nitems(timeout_wheel); b++)
-		CIRCQ_INIT(&timeout_wheel[b]);
+	CIRCQ_INIT(&toc->toc_todo);
+	for (b = 0; b < nitems(toc->toc_wheel); b++)
+		CIRCQ_INIT(&toc->toc_wheel[b]);
+}
+
+void
+timeout_startup(void)
+{
+
+	timeout_init(timeout_cpu0);
+}
+
+void
+timeout_startup_cpu(struct cpu_info *ci)
+{
+	ci->ci_timeout = malloc(sizeof(struct timeout_cpu), M_DEVBUF,
+	    M_WAITOK|M_ZERO);
+	timeout_init(ci->ci_timeout);
 }
 
 void

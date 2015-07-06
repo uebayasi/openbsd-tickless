@@ -83,6 +83,7 @@ union vmm_cpu_cap {
 };
 
 struct x86_64_tss;
+struct timeout_cpu;
 struct cpu_info {
 	struct device *ci_dev;
 	struct cpu_info *ci_self;
@@ -183,6 +184,7 @@ struct cpu_info {
 	union		vmm_cpu_cap ci_vmm_cap;
 	paddr_t		ci_vmxon_region_pa;
 	struct vmxon_region *ci_vmxon_region;
+	struct timeout_cpu	*ci_timeout;
 };
 
 #define CPUF_BSP	0x0001		/* CPU is the original BSP */

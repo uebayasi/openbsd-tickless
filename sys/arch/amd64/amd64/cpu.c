@@ -460,6 +460,9 @@ cpu_attach(struct device *parent, struct device *self, void *aux)
 	}
 	cpu_vm_init(ci);
 
+	void timeout_startup_cpu(struct cpu_info *);
+	timeout_startup_cpu(ci);
+
 #if defined(MULTIPROCESSOR)
 	if (mp_verbose) {
 		printf("%s: kstack at 0x%lx for %d bytes\n",
