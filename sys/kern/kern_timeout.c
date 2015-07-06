@@ -56,24 +56,14 @@
 struct timeout_cpu {
 	struct circq toc_wheel[BUCKETS];	/* Queues of timeouts */
 	struct circq toc_todo;			/* Worklist */
-
-	/*
-	 * All wheels are locked with the same mutex.
-	 */
 	struct mutex toc_mutex;
 };
-struct timeout_cpu timeout_cpu0_storage = {
-	.toc_mutex = MUTEX_INITIALIZER(IPL_HIGH)
-};
-struct timeout_cpu *timeout_cpu0 = &timeout_cpu0_storage;
-#define	timeout_wheel	timeout_cpu0->toc_wheel
-#define	timeout_todo	timeout_cpu0->toc_todo
-#define	timeout_mutex	timeout_cpu0->toc_mutex
+struct timeout_cpu timeout_cpu0;
 
 #define MASKWHEEL(wheel, time) (((time) >> ((wheel)*WHEELBITS)) & WHEELMASK)
 
 #define BUCKET(rel, abs)						\
-    (timeout_wheel[							\
+    (toc->toc_wheel[							\
 	((rel) <= (1 << (2*WHEELBITS)))					\
 	    ? ((rel) <= (1 << WHEELBITS))				\
 		? MASKWHEEL(0, (abs))					\
@@ -83,8 +73,8 @@ struct timeout_cpu *timeout_cpu0 = &timeout_cpu0_storage;
 		: MASKWHEEL(3, (abs)) + 3*WHEELSIZE])
 
 #define MOVEBUCKET(wheel, time)						\
-    CIRCQ_APPEND(&timeout_todo,						\
-        &timeout_wheel[MASKWHEEL((wheel), (time)) + (wheel)*WHEELSIZE])
+    CIRCQ_APPEND(&toc->toc_todo,						\
+        &toc->toc_wheel[MASKWHEEL((wheel), (time)) + (wheel)*WHEELSIZE])
 
 /*
  * The first thing in a struct timeout is its struct circq, so we
@@ -156,20 +146,23 @@ timeout_init(struct timeout_cpu *toc)
 	CIRCQ_INIT(&toc->toc_todo);
 	for (b = 0; b < nitems(toc->toc_wheel); b++)
 		CIRCQ_INIT(&toc->toc_wheel[b]);
+	mtx_init(&toc->toc_mutex, IPL_HIGH);
 }
 
 void
 timeout_startup(void)
 {
-
-	timeout_init(timeout_cpu0);
+	/* XXX Can't use malloc() yet */
+	cpu_info_primary.ci_timeout = &timeout_cpu0;
+	timeout_init(&timeout_cpu0);
 }
 
+/* XXX cpu_attach() is not called for primary CPU */
 void
 timeout_startup_cpu(struct cpu_info *ci)
 {
 	ci->ci_timeout = malloc(sizeof(struct timeout_cpu), M_DEVBUF,
-	    M_WAITOK|M_ZERO);
+	    M_NOWAIT|M_ZERO);
 	timeout_init(ci->ci_timeout);
 }
 
@@ -185,6 +178,8 @@ timeout_set(struct timeout *new, void (*fn)(void *), void *arg)
 int
 timeout_add(struct timeout *new, int to_ticks)
 {
+	struct cpu_info *ci = curcpu();
+	struct timeout_cpu *toc = ci->ci_timeout;
 	int old_time;
 	int ret = 1;
 
@@ -195,7 +190,7 @@ timeout_add(struct timeout *new, int to_ticks)
 		panic("timeout_add: to_ticks (%d) < 0", to_ticks);
 #endif
 
-	mtx_enter(&timeout_mutex);
+	mtx_enter(&toc->toc_mutex);
 	/* Initialize the time here, it won't change. */
 	old_time = new->to_time;
 	new->to_time = to_ticks + ticks;
@@ -209,14 +204,14 @@ timeout_add(struct timeout *new, int to_ticks)
 	if (new->to_flags & TIMEOUT_ONQUEUE) {
 		if (new->to_time - ticks < old_time - ticks) {
 			CIRCQ_REMOVE(&new->to_list);
-			CIRCQ_INSERT(&new->to_list, &timeout_todo);
+			CIRCQ_INSERT(&new->to_list, &toc->toc_todo);
 		}
 		ret = 0;
 	} else {
 		new->to_flags |= TIMEOUT_ONQUEUE;
-		CIRCQ_INSERT(&new->to_list, &timeout_todo);
+		CIRCQ_INSERT(&new->to_list, &toc->toc_todo);
 	}
-	mtx_leave(&timeout_mutex);
+	mtx_leave(&toc->toc_mutex);
 
 	return (ret);
 }
@@ -301,16 +296,18 @@ timeout_add_nsec(struct timeout *to, int nsecs)
 int
 timeout_del(struct timeout *to)
 {
+	struct cpu_info *ci = curcpu();
+	struct timeout_cpu *toc = ci->ci_timeout;
 	int ret = 0;
 
-	mtx_enter(&timeout_mutex);
+	mtx_enter(&toc->toc_mutex);
 	if (to->to_flags & TIMEOUT_ONQUEUE) {
 		CIRCQ_REMOVE(&to->to_list);
 		to->to_flags &= ~TIMEOUT_ONQUEUE;
 		ret = 1;
 	}
 	to->to_flags &= ~TIMEOUT_TRIGGERED;
-	mtx_leave(&timeout_mutex);
+	mtx_leave(&toc->toc_mutex);
 
 	return (ret);
 }
@@ -322,9 +319,11 @@ timeout_del(struct timeout *to)
 int
 timeout_hardclock_update(void)
 {
+	struct cpu_info *ci = curcpu();
+	struct timeout_cpu *toc = ci->ci_timeout;
 	int ret;
 
-	mtx_enter(&timeout_mutex);
+	mtx_enter(&toc->toc_mutex);
 
 	MOVEBUCKET(0, ticks);
 	if (MASKWHEEL(0, ticks) == 0) {
@@ -335,8 +334,8 @@ timeout_hardclock_update(void)
 				MOVEBUCKET(3, ticks);
 		}
 	}
-	ret = !CIRCQ_EMPTY(&timeout_todo);
-	mtx_leave(&timeout_mutex);
+	ret = !CIRCQ_EMPTY(&toc->toc_todo);
+	mtx_leave(&toc->toc_mutex);
 
 	return (ret);
 }
@@ -344,13 +343,15 @@ timeout_hardclock_update(void)
 void
 softclock(void *arg)
 {
+	struct cpu_info *ci = curcpu();
+	struct timeout_cpu *toc = ci->ci_timeout;
 	struct timeout *to;
 	void (*fn)(void *);
 
-	mtx_enter(&timeout_mutex);
-	while (!CIRCQ_EMPTY(&timeout_todo)) {
+	mtx_enter(&toc->toc_mutex);
+	while (!CIRCQ_EMPTY(&toc->toc_todo)) {
 
-		to = timeout_from_circq(CIRCQ_FIRST(&timeout_todo));
+		to = timeout_from_circq(CIRCQ_FIRST(&toc->toc_todo));
 		CIRCQ_REMOVE(&to->to_list);
 
 		/* If due run it, otherwise insert it into the right bucket. */
@@ -369,18 +370,20 @@ softclock(void *arg)
 			fn = to->to_func;
 			arg = to->to_arg;
 
-			mtx_leave(&timeout_mutex);
+			mtx_leave(&toc->toc_mutex);
 			fn(arg);
-			mtx_enter(&timeout_mutex);
+			mtx_enter(&toc->toc_mutex);
 		}
 	}
-	mtx_leave(&timeout_mutex);
+	mtx_leave(&toc->toc_mutex);
 }
 
 #ifndef SMALL_KERNEL
 void
 timeout_adjust_ticks(int adj)
 {
+	struct cpu_info *ci = curcpu();
+	struct timeout_cpu *toc = ci->ci_timeout;
 	struct timeout *to;
 	struct circq *p;
 	int new_ticks, b;
@@ -389,11 +392,11 @@ timeout_adjust_ticks(int adj)
 	if (adj <= 0)
 		return;
 
-	mtx_enter(&timeout_mutex);
+	mtx_enter(&toc->toc_mutex);
 	new_ticks = ticks + adj;
-	for (b = 0; b < nitems(timeout_wheel); b++) {
-		p = CIRCQ_FIRST(&timeout_wheel[b]);
-		while (p != &timeout_wheel[b]) {
+	for (b = 0; b < nitems(toc->toc_wheel); b++) {
+		p = CIRCQ_FIRST(&toc->toc_wheel[b]);
+		while (p != &toc->toc_wheel[b]) {
 			to = timeout_from_circq(p);
 			p = CIRCQ_FIRST(p);
 
@@ -401,11 +404,11 @@ timeout_adjust_ticks(int adj)
 			if (to->to_time - ticks < adj)
 				to->to_time = new_ticks;
 			CIRCQ_REMOVE(&to->to_list);
-			CIRCQ_INSERT(&to->to_list, &timeout_todo);
+			CIRCQ_INSERT(&to->to_list, &toc->toc_todo);
 		}
 	}
 	ticks = new_ticks;
-	mtx_leave(&timeout_mutex);
+	mtx_leave(&toc->toc_mutex);
 }
 #endif
 
@@ -415,6 +418,8 @@ void db_show_callout_bucket(struct circq *);
 void
 db_show_callout_bucket(struct circq *bucket)
 {
+	struct cpu_info *ci = curcpu();
+	struct timeout_cpu *toc = ci->ci_timeout;
 	struct timeout *to;
 	struct circq *p;
 	db_expr_t offset;
@@ -425,21 +430,23 @@ db_show_callout_bucket(struct circq *bucket)
 		db_find_sym_and_offset((db_addr_t)to->to_func, &name, &offset);
 		name = name ? name : "?";
 		db_printf("%9d %2td/%-4td %p  %s\n", to->to_time - ticks,
-		    (bucket - timeout_wheel) / WHEELSIZE,
-		    bucket - timeout_wheel, to->to_arg, name);
+		    (bucket - toc->toc_wheel) / WHEELSIZE,
+		    bucket - toc->toc_wheel, to->to_arg, name);
 	}
 }
 
 void
 db_show_callout(db_expr_t addr, int haddr, db_expr_t count, char *modif)
 {
+	struct cpu_info *ci = curcpu();
+	struct timeout_cpu *toc = ci->ci_timeout;
 	int b;
 
 	db_printf("ticks now: %d\n", ticks);
 	db_printf("    ticks  wheel       arg  func\n");
 
-	db_show_callout_bucket(&timeout_todo);
-	for (b = 0; b < nitems(timeout_wheel); b++)
-		db_show_callout_bucket(&timeout_wheel[b]);
+	db_show_callout_bucket(&toc->toc_todo);
+	for (b = 0; b < nitems(toc->toc_wheel); b++)
+		db_show_callout_bucket(&toc->toc_wheel[b]);
 }
 #endif
