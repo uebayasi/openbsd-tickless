@@ -61,12 +61,13 @@ struct timeout_cpu {
 	 */
 	struct mutex toc_mutex;
 };
-struct timeout_cpu timeout_cpu0 = {
+struct timeout_cpu timeout_cpu0_storage = {
 	.toc_mutex = MUTEX_INITIALIZER(IPL_HIGH)
 };
-#define	timeout_wheel	timeout_cpu0.toc_wheel
-#define	timeout_todo	timeout_cpu0.toc_todo
-#define	timeout_mutex	timeout_cpu0.toc_mutex
+struct timeout_cpu *timeout_cpu0 = &timeout_cpu0_storage;
+#define	timeout_wheel	timeout_cpu0->toc_wheel
+#define	timeout_todo	timeout_cpu0->toc_todo
+#define	timeout_mutex	timeout_cpu0->toc_mutex
 
 #define MASKWHEEL(wheel, time) (((time) >> ((wheel)*WHEELBITS)) & WHEELMASK)
 
