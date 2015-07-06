@@ -58,7 +58,7 @@ struct timeout_cpu {
 	struct circq toc_todo;			/* Worklist */
 	struct mutex toc_mutex;
 };
-struct timeout_cpu timeout_cpu0;
+struct timeout_cpu timeout_cpu_primary;
 
 #define MASKWHEEL(wheel, time) (((time) >> ((wheel)*WHEELBITS)) & WHEELMASK)
 
@@ -153,8 +153,8 @@ void
 timeout_startup(void)
 {
 	/* XXX Can't use malloc() yet */
-	cpu_info_primary.ci_timeout = &timeout_cpu0;
-	timeout_init(&timeout_cpu0);
+	cpu_info_primary.ci_timeout = &timeout_cpu_primary;
+	timeout_init(&timeout_cpu_primary);
 }
 
 /* XXX cpu_attach() is not called for primary CPU */
