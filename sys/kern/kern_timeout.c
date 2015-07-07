@@ -180,6 +180,9 @@ timeout_add(struct timeout *new, int to_ticks)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
+#if 1
+	toc = &timeout_cpu_primary;
+#endif
 	int old_time;
 	int ret = 1;
 
@@ -298,6 +301,9 @@ timeout_del(struct timeout *to)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
+#if 1
+	toc = &timeout_cpu_primary;
+#endif
 	int ret = 0;
 
 	mtx_enter(&toc->toc_mutex);
@@ -321,6 +327,9 @@ timeout_hardclock_update(void)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
+#if 1
+	toc = &timeout_cpu_primary;
+#endif
 	int ret;
 
 	mtx_enter(&toc->toc_mutex);
@@ -345,6 +354,9 @@ softclock(void *arg)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
+#if 1
+	toc = &timeout_cpu_primary;
+#endif
 	struct timeout *to;
 	void (*fn)(void *);
 
@@ -384,6 +396,9 @@ timeout_adjust_ticks(int adj)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
+#if 1
+	toc = &timeout_cpu_primary;
+#endif
 	struct timeout *to;
 	struct circq *p;
 	int new_ticks, b;
@@ -420,6 +435,9 @@ db_show_callout_bucket(struct circq *bucket)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
+#if 1
+	toc = &timeout_cpu_primary;
+#endif
 	struct timeout *to;
 	struct circq *p;
 	db_expr_t offset;
@@ -440,6 +458,9 @@ db_show_callout(db_expr_t addr, int haddr, db_expr_t count, char *modif)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
+#if 1
+	toc = &timeout_cpu_primary;
+#endif
 	int b;
 
 	db_printf("ticks now: %d\n", ticks);
