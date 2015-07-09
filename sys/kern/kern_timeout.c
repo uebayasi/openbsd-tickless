@@ -361,11 +361,6 @@ softclock(void *arg)
 	void (*fn)(void *);
 
 	nsoftclocks[cpu_number()]++;
-	if (!CPU_IS_PRIMARY(ci)) {
-		return;
-	}
-
-	KERNEL_LOCK();
 
 	mtx_enter(&toc->toc_mutex);
 	while (!CIRCQ_EMPTY(&toc->toc_todo)) {
@@ -390,13 +385,13 @@ softclock(void *arg)
 			arg = to->to_arg;
 
 			mtx_leave(&toc->toc_mutex);
+			KERNEL_LOCK();
 			fn(arg);
+			KERNEL_UNLOCK();
 			mtx_enter(&toc->toc_mutex);
 		}
 	}
 	mtx_leave(&toc->toc_mutex);
-
-	KERNEL_UNLOCK();
 }
 
 #ifndef SMALL_KERNEL
