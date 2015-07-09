@@ -289,8 +289,11 @@ hardclock(struct clockframe *frame)
 	 * If we are not the primary CPU, we're not allowed to do
 	 * any more work.
 	 */
-	if (CPU_IS_PRIMARY(ci) == 0)
+	if (CPU_IS_PRIMARY(ci) == 0) {
+		if ((ticks & 0xff) == 0)
+			softintr_schedule(softclock_si);
 		return;
+	}
 
 	tc_ticktock();
 

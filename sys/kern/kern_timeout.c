@@ -161,6 +161,10 @@ timeout_startup(void)
 void
 timeout_startup_cpu(struct cpu_info *ci)
 {
+	if (CPU_IS_PRIMARY(ci)) {
+		ci->ci_timeout = &timeout_cpu_primary;
+		return;
+	}
 	ci->ci_timeout = malloc(sizeof(struct timeout_cpu), M_DEVBUF,
 	    M_NOWAIT|M_ZERO);
 	timeout_init(ci->ci_timeout);
@@ -327,9 +331,6 @@ timeout_hardclock_update(void)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
-#if 1
-	toc = &timeout_cpu_primary;
-#endif
 	int ret;
 
 	mtx_enter(&toc->toc_mutex);
@@ -349,16 +350,20 @@ timeout_hardclock_update(void)
 	return (ret);
 }
 
+int nsoftclocks[2];
+
 void
 softclock(void *arg)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
-#if 1
-	toc = &timeout_cpu_primary;
-#endif
 	struct timeout *to;
 	void (*fn)(void *);
+
+	nsoftclocks[cpu_number()]++;
+	if (!CPU_IS_PRIMARY(ci)) {
+		return;
+	}
 
 	KERNEL_LOCK();
 
@@ -400,9 +405,6 @@ timeout_adjust_ticks(int adj)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
-#if 1
-	toc = &timeout_cpu_primary;
-#endif
 	struct timeout *to;
 	struct circq *p;
 	int new_ticks, b;
@@ -439,9 +441,6 @@ db_show_callout_bucket(struct circq *bucket)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
-#if 1
-	toc = &timeout_cpu_primary;
-#endif
 	struct timeout *to;
 	struct circq *p;
 	db_expr_t offset;
@@ -462,9 +461,6 @@ db_show_callout(db_expr_t addr, int haddr, db_expr_t count, char *modif)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
-#if 1
-	toc = &timeout_cpu_primary;
-#endif
 	int b;
 
 	db_printf("ticks now: %d\n", ticks);
