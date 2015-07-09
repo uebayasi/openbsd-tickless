@@ -333,16 +333,17 @@ timeout_hardclock_update(void)
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
 	int ret;
+	int t = ticks;
 
 	mtx_enter(&toc->toc_mutex);
 
-	MOVEBUCKET(0, ticks);
-	if (MASKWHEEL(0, ticks) == 0) {
-		MOVEBUCKET(1, ticks);
-		if (MASKWHEEL(1, ticks) == 0) {
-			MOVEBUCKET(2, ticks);
-			if (MASKWHEEL(2, ticks) == 0)
-				MOVEBUCKET(3, ticks);
+	MOVEBUCKET(0, t);
+	if (MASKWHEEL(0, t) == 0) {
+		MOVEBUCKET(1, t);
+		if (MASKWHEEL(1, t) == 0) {
+			MOVEBUCKET(2, t);
+			if (MASKWHEEL(2, t) == 0)
+				MOVEBUCKET(3, t);
 		}
 	}
 	ret = !CIRCQ_EMPTY(&toc->toc_todo);
