@@ -360,6 +360,8 @@ softclock(void *arg)
 	struct timeout *to;
 	void (*fn)(void *);
 
+	KERNEL_LOCK();
+
 	mtx_enter(&toc->toc_mutex);
 	while (!CIRCQ_EMPTY(&toc->toc_todo)) {
 
@@ -388,6 +390,8 @@ softclock(void *arg)
 		}
 	}
 	mtx_leave(&toc->toc_mutex);
+
+	KERNEL_UNLOCK();
 }
 
 #ifndef SMALL_KERNEL
