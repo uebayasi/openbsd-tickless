@@ -62,6 +62,7 @@ struct timeout {
 	void *to_arg;				/* function argument */
 	int to_time;				/* ticks on event */
 	int to_flags;				/* misc flags */
+	struct timeout_cpu *to_cpu;
 };
 
 /*

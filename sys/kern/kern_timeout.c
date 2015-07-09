@@ -176,6 +176,7 @@ timeout_set(struct timeout *new, void (*fn)(void *), void *arg)
 	new->to_func = fn;
 	new->to_arg = arg;
 	new->to_flags = TIMEOUT_INITIALIZED;
+	new->to_cpu = NULL;
 }
 
 
@@ -184,9 +185,6 @@ timeout_add(struct timeout *new, int to_ticks)
 {
 	struct cpu_info *ci = curcpu();
 	struct timeout_cpu *toc = ci->ci_timeout;
-#if 1
-	toc = &timeout_cpu_primary;
-#endif
 	int old_time;
 	int ret = 1;
 
@@ -202,6 +200,7 @@ timeout_add(struct timeout *new, int to_ticks)
 	old_time = new->to_time;
 	new->to_time = to_ticks + ticks;
 	new->to_flags &= ~TIMEOUT_TRIGGERED;
+	new->to_cpu = toc;
 
 	/*
 	 * If this timeout already is scheduled and now is moved
@@ -219,6 +218,8 @@ timeout_add(struct timeout *new, int to_ticks)
 		CIRCQ_INSERT(&new->to_list, &toc->toc_todo);
 	}
 	mtx_leave(&toc->toc_mutex);
+
+	KASSERT(new->to_cpu != NULL);
 
 	return (ret);
 }
@@ -303,12 +304,11 @@ timeout_add_nsec(struct timeout *to, int nsecs)
 int
 timeout_del(struct timeout *to)
 {
-	struct cpu_info *ci = curcpu();
-	struct timeout_cpu *toc = ci->ci_timeout;
-#if 1
-	toc = &timeout_cpu_primary;
-#endif
+	struct timeout_cpu *toc = to->to_cpu;
 	int ret = 0;
+
+	if (toc == NULL)
+		return (ret);
 
 	mtx_enter(&toc->toc_mutex);
 	if (to->to_flags & TIMEOUT_ONQUEUE) {
@@ -317,6 +317,7 @@ timeout_del(struct timeout *to)
 		ret = 1;
 	}
 	to->to_flags &= ~TIMEOUT_TRIGGERED;
+	to->to_cpu = NULL;
 	mtx_leave(&toc->toc_mutex);
 
 	return (ret);
