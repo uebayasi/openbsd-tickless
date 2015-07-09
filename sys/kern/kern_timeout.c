@@ -385,9 +385,11 @@ softclock(void *arg)
 			arg = to->to_arg;
 
 			mtx_leave(&toc->toc_mutex);
-			KERNEL_LOCK();
+			if ((to->to_flags & TIMEOUT_MPSAFE) == 0)
+				KERNEL_LOCK();
 			fn(arg);
-			KERNEL_UNLOCK();
+			if ((to->to_flags & TIMEOUT_MPSAFE) == 0)
+				KERNEL_UNLOCK();
 			mtx_enter(&toc->toc_mutex);
 		}
 	}
