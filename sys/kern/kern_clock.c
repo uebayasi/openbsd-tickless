@@ -236,8 +236,9 @@ void
 hardclock_handler(struct timerev *te, struct clockframe *frame,
     sbintime_t *nextdiffp)
 {
-	struct cpu_info *ci = curcpu();
 	sbintime_t nextdiff;
+#if 0
+	struct cpu_info *ci = curcpu();
 
 	if (CPU_IS_PRIMARY(ci)) {
 		nextdiff = hardclock_timer.next - kern_timer.now;
@@ -263,6 +264,10 @@ hardclock_handler(struct timerev *te, struct clockframe *frame,
 		hardclock_timer.prev = hardclock_timer.next;
 		hardclock_timer.next += nextdiff;
 	}
+#else
+	nextdiff = hardclock_timer.sbt_1hz;
+	*nextdiffp = nextdiff;
+#endif
 	/*
 	 * XXX Execute only if now is our timing.
 	 */
