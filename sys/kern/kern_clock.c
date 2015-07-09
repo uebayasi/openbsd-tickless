@@ -285,17 +285,9 @@ hardclock(struct clockframe *frame)
 	if (--ci->ci_schedstate.spc_rrticks <= 0)
 		roundrobin(ci);
 
-	/*
-	 * If we are not the primary CPU, we're not allowed to do
-	 * any more work.
-	 */
-	if (CPU_IS_PRIMARY(ci) == 0) {
-		if ((ticks & 0xff) == 0)
-			softintr_schedule(softclock_si);
-		return;
+	if (CPU_IS_PRIMARY(ci)) {
+		tc_ticktock();
 	}
-
-	tc_ticktock();
 
 	/*
 	 * Update real-time timeout queue.
