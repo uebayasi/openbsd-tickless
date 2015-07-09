@@ -241,8 +241,10 @@ struct x86_soft_intrhand {
 	struct x86_soft_intr *sih_intrhead;
 	void	(*sih_fn)(void *);
 	void	*sih_arg;
-	int	sih_pending;
+	int	sih_flags;
 };
+#define	SIHF_PENDING	0x00000001
+#define	SIHF_MPSAFE	0x00000002
 
 struct x86_soft_intr {
 	TAILQ_HEAD(, x86_soft_intrhand)
@@ -262,9 +264,9 @@ do {									\
 	struct x86_soft_intr *__si = __sih->sih_intrhead;		\
 									\
 	mtx_enter(&__si->softintr_lock);				\
-	if (__sih->sih_pending == 0) {					\
+	if ((__sih->sih_flags & SIHF_PENDING) == 0) {			\
 		TAILQ_INSERT_TAIL(&__si->softintr_q, __sih, sih_q);	\
-		__sih->sih_pending = 1;					\
+		__sih->sih_flags |= SIHF_PENDING;			\
 		softintr(__si->softintr_ssir);				\
 	}								\
 	mtx_leave(&__si->softintr_lock);				\

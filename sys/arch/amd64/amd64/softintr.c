@@ -80,6 +80,7 @@ softintr_dispatch(int which)
 	struct x86_soft_intr *si = &x86_soft_intrs[which];
 	struct x86_soft_intrhand *sih;
 	int floor;
+	int need_lock;
 
 	floor = ci->ci_handled_intr_level;
 	ci->ci_handled_intr_level = ci->ci_ilevel;
@@ -93,13 +94,24 @@ softintr_dispatch(int which)
 			break;
 		}
 		TAILQ_REMOVE(&si->softintr_q, sih, sih_q);
-		sih->sih_pending = 0;
+		sih->sih_flags &= ~SIHF_PENDING;
+#ifndef MULTIPROCESSOR
+		need_lock = 1;
+#else
+		need_lock = (sih->sih_flags & SIHF_MPSAFE) == 0;
+#endif
 
 		uvmexp.softs++;
 
 		mtx_leave(&si->softintr_lock);
 
+		if (need_lock) {
+			KERNEL_LOCK();
+		}
 		(*sih->sih_fn)(sih->sih_arg);
+		if (need_lock) {
+			KERNEL_UNLOCK();
+		}
 	}
 	KERNEL_UNLOCK();
 
@@ -118,7 +130,7 @@ softintr_establish(int ipl, void (*func)(void *), void *arg)
 	struct x86_soft_intrhand *sih;
 	int which;
 
-	switch (ipl) {
+	switch (ipl & ~IPL_MPSAFE) {
 	case IPL_SOFTCLOCK:
 		which = X86_SOFTINTR_SOFTCLOCK;
 		break;
@@ -143,7 +155,11 @@ softintr_establish(int ipl, void (*func)(void *), void *arg)
 		sih->sih_intrhead = si;
 		sih->sih_fn = func;
 		sih->sih_arg = arg;
-		sih->sih_pending = 0;
+		sih->sih_flags = 0;
+#ifdef MULTIPROCESSOR
+		if (ipl >= IPL_SCHED || (ipl & IPL_MPSAFE) != 0)
+			sih->sih_flags |= SIHF_MPSAFE;
+#endif
 	}
 	return (sih);
 }
@@ -160,9 +176,9 @@ softintr_disestablish(void *arg)
 	struct x86_soft_intr *si = sih->sih_intrhead;
 
 	mtx_enter(&si->softintr_lock);
-	if (sih->sih_pending) {
+	if ((sih->sih_flags & SIHF_PENDING) != 0) {
 		TAILQ_REMOVE(&si->softintr_q, sih, sih_q);
-		sih->sih_pending = 0;
+		sih->sih_flags &= ~SIHF_PENDING;
 	}
 	mtx_leave(&si->softintr_lock);
 
