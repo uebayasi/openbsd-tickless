@@ -95,11 +95,7 @@ softintr_dispatch(int which)
 		}
 		TAILQ_REMOVE(&si->softintr_q, sih, sih_q);
 		sih->sih_flags &= ~SIHF_PENDING;
-#ifndef MULTIPROCESSOR
-		need_lock = 1;
-#else
 		need_lock = (sih->sih_flags & SIHF_MPSAFE) == 0;
-#endif
 
 		uvmexp.softs++;
 
