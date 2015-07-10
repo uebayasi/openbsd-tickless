@@ -152,10 +152,8 @@ softintr_establish(int ipl, void (*func)(void *), void *arg)
 		sih->sih_fn = func;
 		sih->sih_arg = arg;
 		sih->sih_flags = 0;
-#ifdef MULTIPROCESSOR
 		if (ipl >= IPL_SCHED || (ipl & IPL_MPSAFE) != 0)
 			sih->sih_flags |= SIHF_MPSAFE;
-#endif
 	}
 	return (sih);
 }
