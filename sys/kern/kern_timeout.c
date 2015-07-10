@@ -367,7 +367,6 @@ softclock(void *arg)
 
 	mtx_enter(&toc->toc_mutex);
 	while (!CIRCQ_EMPTY(&toc->toc_todo)) {
-
 		to = timeout_from_circq(CIRCQ_FIRST(&toc->toc_todo));
 		CIRCQ_REMOVE(&to->to_list);
 
