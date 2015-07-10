@@ -361,6 +361,7 @@ softclock(void *arg)
 	struct timeout_cpu *toc = ci->ci_timeout;
 	struct timeout *to;
 	void (*fn)(void *);
+	int need_lock;
 
 	nsoftclocks[cpu_number()]++;
 
@@ -385,12 +386,13 @@ softclock(void *arg)
 
 			fn = to->to_func;
 			arg = to->to_arg;
+			need_lock = (to->to_flags & TIMEOUT_MPSAFE) == 0;
 
 			mtx_leave(&toc->toc_mutex);
-			if ((to->to_flags & TIMEOUT_MPSAFE) == 0)
+			if (need_lock)
 				KERNEL_LOCK();
 			fn(arg);
-			if ((to->to_flags & TIMEOUT_MPSAFE) == 0)
+			if (need_lock)
 				KERNEL_UNLOCK();
 			mtx_enter(&toc->toc_mutex);
 		}
