@@ -162,6 +162,7 @@ struct vm_rpc {
 
 struct vmt_softc {
 	struct device		sc_dev;
+	struct mutex		sc_lock;
 
 	struct vm_rpc		sc_tclo_rpc;
 	char			*sc_rpc_buf;
@@ -348,6 +349,7 @@ vmt_attach(struct device *parent, struct device *self, void *aux)
 		    DEVNAME(sc));
 		return;
 	}
+	mtx_init(&sc->sc_lock, IPL_SOFTCLOCK);
 
 	if (vm_rpc_open(&sc->sc_tclo_rpc, VM_RPC_OPEN_TCLO) != 0) {
 		printf("%s: failed to open backdoor RPC channel "
@@ -458,6 +460,9 @@ vmt_activate(struct device *self, int act)
 {
 	int rv = 0;
 
+	/*
+	 * Neither vmt_shutdown() nor vmt_resume() change softc, thus no locks.
+	 */
 	switch (act) {
 	case DVACT_POWERDOWN:
 		vmt_shutdown(self);
@@ -549,6 +554,8 @@ vmt_tick(void *xarg)
 	frame.edx.part.low  = VM_PORT_CMD;
 	vm_cmd(&frame);
 
+	mtx_enter(&sc->sc_lock);
+
 	if (frame.eax.word != 0xffffffff) {
 		host.tv_sec = ((uint64_t)frame.esi.word << 32) | frame.edx.word;
 		host.tv_usec = frame.ebx.word;
@@ -566,6 +573,8 @@ vmt_tick(void *xarg)
 	vmt_update_guest_uptime(sc);
 
 	timeout_add_sec(&sc->sc_tick, 15);
+
+	mtx_leave(&sc->sc_lock);
 }
 
 void
@@ -837,6 +846,8 @@ vmt_tclo_tick(void *xarg)
 	/* By default, poll every second for new messages */
 	delay = 1;
 
+	mtx_enter(&sc->sc_lock);
+
 	/* reopen tclo channel if it's currently closed */
 	if (sc->sc_tclo_rpc.channel == 0 &&
 	    sc->sc_tclo_rpc.cookie1 == 0 &&
@@ -909,6 +920,7 @@ vmt_tclo_tick(void *xarg)
 
 out:
 	timeout_add_sec(&sc->sc_tclo_tick, delay);
+	mtx_leave(&sc->sc_lock);
 }
 
 #define BACKDOOR_OP_I386(op, frame)		\
