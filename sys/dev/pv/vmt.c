@@ -36,6 +36,7 @@
 #include <sys/proc.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/mutex.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -967,22 +968,30 @@ out:
 #define BACKDOOR_OP(op, frame) BACKDOOR_OP_AMD64(op, frame)
 #endif
 
+struct mutex backdoor_lock = MUTEX_INITIALIZER(IPL_SOFTCLOCK);
+
 void
 vm_cmd(struct vm_backdoor *frame)
 {
+	mtx_enter(&backdoor_lock);
 	BACKDOOR_OP("inl %%dx, %%eax;", frame);
+	mtx_leave(&backdoor_lock);
 }
 
 void
 vm_ins(struct vm_backdoor *frame)
 {
+	mtx_enter(&backdoor_lock);
 	BACKDOOR_OP("cld;\n\trep insb;", frame);
+	mtx_leave(&backdoor_lock);
 }
 
 void
 vm_outs(struct vm_backdoor *frame)
 {
+	mtx_enter(&backdoor_lock);
 	BACKDOOR_OP("cld;\n\trep outsb;", frame);
+	mtx_leave(&backdoor_lock);
 }
 
 int
