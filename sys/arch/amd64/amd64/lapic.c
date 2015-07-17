@@ -72,6 +72,9 @@ void	lapic_clockintr(void *, struct intrframe);
 void	lapic_initclocks(void);
 void	lapic_map(paddr_t);
 
+void lapic_timer_oneshot(u_long);
+void lapic_timer_periodic(u_long);
+
 void lapic_hwmask(struct pic *, int);
 void lapic_hwunmask(struct pic *, int);
 void lapic_setup(struct pic *, struct cpu_info *, int, int, int);
@@ -466,9 +469,7 @@ lapic_calibrate_timer(struct cpu_info *ci)
 	 * Configure timer to one-shot, interrupt masked,
 	 * large positive number.
 	 */
-	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_M);
-	lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
-	lapic_writereg(LAPIC_ICR_TIMER, 0x80000000);
+	lapic_timer_oneshot(0x80000000);
 
 	disable_intr();
 
@@ -506,10 +507,7 @@ lapic_calibrate_timer(struct cpu_info *ci)
 		lapic_tval = (lapic_per_second * 2) / hz;
 		lapic_tval = (lapic_tval / 2) + (lapic_tval & 0x1);
 
-		lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM | LAPIC_LVTT_M |
-		    LAPIC_TIMER_VECTOR);
-		lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
-		lapic_writereg(LAPIC_ICR_TIMER, lapic_tval);
+		lapic_timer_periodic(lapic_tval);
 
 		/*
 		 * Compute fixed-point ratios between cycles and
@@ -538,6 +536,23 @@ lapic_calibrate_timer(struct cpu_info *ci)
 		delay_func = lapic_delay;
 		initclock_func = lapic_initclocks;
 	}
+}
+
+void
+lapic_timer_oneshot(u_long count)
+{
+	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_M);
+	lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
+	lapic_writereg(LAPIC_ICR_TIMER, count);
+}
+
+void
+lapic_timer_periodic(u_long count)
+{
+	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM | LAPIC_LVTT_M |
+	    LAPIC_TIMER_VECTOR);
+	lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
+	lapic_writereg(LAPIC_ICR_TIMER, count);
 }
 
 /*
