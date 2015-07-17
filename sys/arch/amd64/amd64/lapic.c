@@ -541,7 +541,10 @@ lapic_calibrate_timer(struct cpu_info *ci)
 void
 lapic_timer_oneshot(u_long count)
 {
-	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_M);
+	u_int32_t lvtt;
+
+	lvtt = LAPIC_LVTT_TM_ONESHOT | LAPIC_LVTT_M | LAPIC_TIMER_VECTOR;
+	lapic_writereg(LAPIC_LVTT, lvtt);
 	lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
 	lapic_writereg(LAPIC_ICR_TIMER, count);
 }
@@ -549,8 +552,10 @@ lapic_timer_oneshot(u_long count)
 void
 lapic_timer_periodic(u_long count)
 {
-	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM | LAPIC_LVTT_M |
-	    LAPIC_TIMER_VECTOR);
+	u_int32_t lvtt;
+
+	lvtt = LAPIC_LVTT_TM_PERIODIC | LAPIC_LVTT_M | LAPIC_TIMER_VECTOR;
+	lapic_writereg(LAPIC_LVTT, lvtt);
 	lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
 	lapic_writereg(LAPIC_ICR_TIMER, count);
 }
