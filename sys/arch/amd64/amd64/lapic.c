@@ -377,7 +377,7 @@ lapic_gettick(void)
 
 #include <sys/kernel.h>		/* for hz */
 
-u_int32_t lapic_tval;
+u_int32_t lapic_timer_periodic_count;
 
 /*
  * this gets us up to a 4GHz busclock....
@@ -411,10 +411,9 @@ lapic_startclock(void)
 	 * then set divisor,
 	 * then unmask and set the vector.
 	 */
-	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM|LAPIC_LVTT_M);
-	lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
-	lapic_writereg(LAPIC_ICR_TIMER, lapic_tval);
-	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM|LAPIC_TIMER_VECTOR);
+	lapic_timer_periodic(lapic_timer_periodic_count);
+	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_PERIODIC |
+	    LAPIC_TIMER_VECTOR);
 }
 
 void
@@ -504,10 +503,11 @@ lapic_calibrate_timer(struct cpu_info *ci)
 		 * reprogram the apic timer to run in periodic mode.
 		 * XXX need to program timer on other cpu's, too.
 		 */
-		lapic_tval = (lapic_per_second * 2) / hz;
-		lapic_tval = (lapic_tval / 2) + (lapic_tval & 0x1);
+		u_int32_t tmp;
+		tmp = (lapic_per_second * 2) / hz;
+		lapic_timer_periodic_count = (tmp / 2) + (tmp & 0x1);
 
-		lapic_timer_periodic(lapic_tval);
+		lapic_timer_periodic(lapic_timer_periodic_count);
 
 		/*
 		 * Compute fixed-point ratios between cycles and
@@ -582,7 +582,7 @@ lapic_delay(int usec)
 	while (deltat > 0) {
 		tick = lapic_gettick();
 		if (tick > otick)
-			deltat -= lapic_tval - (tick - otick);
+			deltat -= lapic_timer_periodic_count - (tick - otick);
 		else
 			deltat -= otick - tick;
 		otick = tick;
