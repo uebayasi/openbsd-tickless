@@ -37,6 +37,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/device.h>
+#include <sys/timers.h>
 
 #include <uvm/uvm_extern.h>
 
@@ -73,6 +74,9 @@ static u_int32_t lapic_gettick(void);
 void	lapic_clockintr(void *, struct intrframe);
 void	lapic_initclocks(void);
 void	lapic_map(paddr_t);
+
+void lapic_timer_start(struct timerdev *, u_long, u_long);
+void lapic_timer_stop(struct timerdev *);
 
 void lapic_timer_oneshot(u_long);
 void lapic_timer_periodic(u_long);
@@ -113,6 +117,11 @@ void (*lapic_writereg)(int, u_int32_t)		= i82489_writereg;
 #ifdef MULTIPROCESSOR
 void (*x86_ipi)(int vec, int target, int dl)	= i82489_ipi;
 #endif
+
+struct timerdev lapic_timer = {
+	.td_start = lapic_timer_start,
+	.td_stop = lapic_timer_stop
+};
 
 u_int32_t
 i82489_readreg(int reg)
@@ -341,6 +350,8 @@ lapic_boot_init(paddr_t lapic_base)
 	static u_int64_t ipi_irq = 0;
 #endif
 
+	timerdev_register(&lapic_timer);
+
 	lapic_map(lapic_base);
 
 #ifdef MULTIPROCESSOR
@@ -397,7 +408,7 @@ lapic_clockintr(void *arg, struct intrframe frame)
 
 	floor = ci->ci_handled_intr_level;
 	ci->ci_handled_intr_level = ci->ci_ilevel;
-	hardclock((struct clockframe *)&frame);
+	timerdev_handler((struct clockframe *)&frame);
 	ci->ci_handled_intr_level = floor;
 
 	clk_count.ec_count++;
@@ -558,6 +569,16 @@ lapic_calibrate_timer(struct cpu_info *ci)
 #endif
 		initclock_func = lapic_initclocks;
 	}
+}
+
+void
+lapic_timer_start(struct timerdev *td, u_long first, u_long period)
+{
+}
+
+void
+lapic_timer_stop(struct timerdev *td)
+{
 }
 
 void
