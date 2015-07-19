@@ -32,6 +32,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define	LAPIC_ONESHOT
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/device.h>
@@ -399,6 +401,12 @@ lapic_clockintr(void *arg, struct intrframe frame)
 	ci->ci_handled_intr_level = floor;
 
 	clk_count.ec_count++;
+
+#ifdef LAPIC_ONESHOT
+	lapic_timer_oneshot(lapic_timer_periodic_count);
+	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
+	    LAPIC_TIMER_VECTOR);
+#endif
 }
 
 void
@@ -411,9 +419,15 @@ lapic_startclock(void)
 	 * then set divisor,
 	 * then unmask and set the vector.
 	 */
+#ifndef LAPIC_ONESHOT
 	lapic_timer_periodic(lapic_timer_periodic_count);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_PERIODIC |
 	    LAPIC_TIMER_VECTOR);
+#else
+	lapic_timer_oneshot(lapic_timer_periodic_count);
+	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
+	    LAPIC_TIMER_VECTOR);
+#endif
 }
 
 void
@@ -507,7 +521,9 @@ lapic_calibrate_timer(struct cpu_info *ci)
 		tmp = (lapic_per_second * 2) / hz;
 		lapic_timer_periodic_count = (tmp / 2) + (tmp & 0x1);
 
+#ifndef LAPIC_ONESHOT
 		lapic_timer_periodic(lapic_timer_periodic_count);
+#endif
 
 		/*
 		 * Compute fixed-point ratios between cycles and
@@ -533,7 +549,13 @@ lapic_calibrate_timer(struct cpu_info *ci)
 		 * Now that the timer's calibrated, use the apic timer routines
 		 * for all our timing needs..
 		 */
+#ifndef LAPIC_ONESHOT
+		/*
+		 * LAPIC delay works only in periodic mode.
+		 * Fall back to i8254_delay().
+		 */
 		delay_func = lapic_delay;
+#endif
 		initclock_func = lapic_initclocks;
 	}
 }
