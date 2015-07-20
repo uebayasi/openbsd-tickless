@@ -314,8 +314,26 @@ void	binuptime(struct bintime *);
 void	nanouptime(struct timespec *);
 void	microuptime(struct timeval *);
 
+static __inline sbintime_t
+sbinuptime(void)
+{
+	struct bintime _bt;
+
+	binuptime(&_bt);
+	return (bttosbt(_bt));
+}
+
 void	getnanouptime(struct timespec *);
 void	getmicrouptime(struct timeval *);
+
+static __inline sbintime_t
+getsbinuptime(void)
+{
+	struct bintime _bt;
+
+	getbinuptime(&_bt);
+	return (bttosbt(_bt));
+}
 
 struct proc;
 int	clock_gettime(struct proc *, clockid_t, struct timespec *);
