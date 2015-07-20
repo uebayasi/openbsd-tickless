@@ -393,7 +393,7 @@ lapic_gettick(void)
 
 #include <sys/kernel.h>		/* for hz */
 
-u_int32_t lapic_timer_count_1hz;
+u_int32_t lapic_tval;
 
 /*
  * this gets us up to a 4GHz busclock....
@@ -428,11 +428,11 @@ lapic_startclock(void)
 	 * then unmask and set the vector.
 	 */
 #ifndef LAPIC_ONESHOT
-	lapic_timer_periodic_raw(lapic_timer_count_1hz);
+	lapic_timer_periodic_raw(lapic_tval);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_PERIODIC |
 	    LAPIC_TIMER_VECTOR);
 #else
-	lapic_timer_oneshot_raw(lapic_timer_count_1hz);
+	lapic_timer_oneshot_raw(lapic_tval);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
 	    LAPIC_TIMER_VECTOR);
 #endif
@@ -527,10 +527,10 @@ lapic_calibrate_timer(struct cpu_info *ci)
 		 */
 		u_int32_t tmp;
 		tmp = (lapic_per_second * 2) / hz;
-		lapic_timer_count_1hz = (tmp / 2) + (tmp & 0x1);
+		lapic_tval = (tmp / 2) + (tmp & 0x1);
 
 #ifndef LAPIC_ONESHOT
-		lapic_timer_periodic_raw(lapic_timer_count_1hz);
+		lapic_timer_periodic_raw(lapic_tval);
 #endif
 
 		/*
@@ -643,7 +643,7 @@ lapic_delay(int usec)
 	while (deltat > 0) {
 		tick = lapic_gettick();
 		if (tick > otick)
-			deltat -= lapic_timer_count_1hz - (tick - otick);
+			deltat -= lapic_tval - (tick - otick);
 		else
 			deltat -= otick - tick;
 		otick = tick;
