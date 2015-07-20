@@ -79,8 +79,8 @@ void	lapic_map(paddr_t);
 void lapic_timer_start(struct timerdev *, sbintime_t, sbintime_t);
 void lapic_timer_stop(struct timerdev *);
 
-void lapic_timer_oneshot(u_long);
-void lapic_timer_periodic(u_long);
+void lapic_timer_oneshot_raw(u_long);
+void lapic_timer_periodic_raw(u_long);
 
 void lapic_hwmask(struct pic *, int);
 void lapic_hwunmask(struct pic *, int);
@@ -426,11 +426,11 @@ lapic_startclock(void)
 	 * then unmask and set the vector.
 	 */
 #ifndef LAPIC_ONESHOT
-	lapic_timer_periodic(lapic_timer_periodic_count);
+	lapic_timer_periodic_raw(lapic_timer_periodic_count);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_PERIODIC |
 	    LAPIC_TIMER_VECTOR);
 #else
-	lapic_timer_oneshot(lapic_timer_periodic_count);
+	lapic_timer_oneshot_raw(lapic_timer_periodic_count);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
 	    LAPIC_TIMER_VECTOR);
 #endif
@@ -488,7 +488,7 @@ lapic_calibrate_timer(struct cpu_info *ci)
 	 * Configure timer to one-shot, interrupt masked,
 	 * large positive number.
 	 */
-	lapic_timer_oneshot(0x80000000);
+	lapic_timer_oneshot_raw(0x80000000);
 
 	disable_intr();
 
@@ -528,7 +528,7 @@ lapic_calibrate_timer(struct cpu_info *ci)
 		lapic_timer_periodic_count = (tmp / 2) + (tmp & 0x1);
 
 #ifndef LAPIC_ONESHOT
-		lapic_timer_periodic(lapic_timer_periodic_count);
+		lapic_timer_periodic_raw(lapic_timer_periodic_count);
 #endif
 
 		/*
@@ -569,7 +569,7 @@ lapic_calibrate_timer(struct cpu_info *ci)
 void
 lapic_timer_start(struct timerdev *td, sbintime_t first, sbintime_t period)
 {
-	lapic_timer_oneshot(lapic_timer_periodic_count);
+	lapic_timer_oneshot_raw(lapic_timer_periodic_count);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
 	    LAPIC_TIMER_VECTOR);
 }
@@ -580,7 +580,7 @@ lapic_timer_stop(struct timerdev *td)
 }
 
 void
-lapic_timer_oneshot(u_long count)
+lapic_timer_oneshot_raw(u_long count)
 {
 	u_int32_t lvtt;
 
@@ -591,7 +591,7 @@ lapic_timer_oneshot(u_long count)
 }
 
 void
-lapic_timer_periodic(u_long count)
+lapic_timer_periodic_raw(u_long count)
 {
 	u_int32_t lvtt;
 
