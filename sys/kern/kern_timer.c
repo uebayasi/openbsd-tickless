@@ -53,6 +53,10 @@ timerdev_handler(struct clockframe *frame)
 		ticks++;
 		kern_timer.now = sbinuptime();
 		nextdiff = kern_timer.next - kern_timer.now;
+
+		/*
+		 * If timer is getting inaccurate, forcibly reset it.
+		 */
 		if (nextdiff < kern_timer.nextdiffmin ||
 		    nextdiff > kern_timer.nextdiffmax) {
 			if (nextdiff < kern_timer.nextdiffmin)
@@ -61,6 +65,7 @@ timerdev_handler(struct clockframe *frame)
 				printf("X");
 			kern_timer.prev = kern_timer.next = kern_timer.now;
 			kern_timer.next += kern_timer.sbt_1hz;
+			nextdiff = kern_timer.sbt_1hz;
 		}
 	}
 
@@ -74,8 +79,7 @@ timerdev_handler(struct clockframe *frame)
 	/*
 	 * Schedule the next tick.
 	 */
-	(*kern_timer.timerdev->td_start)(kern_timer.timerdev,
-	    kern_timer.next - kern_timer.now, 0);
+	(*kern_timer.timerdev->td_start)(kern_timer.timerdev, nextdiff, 0);
 
 	/*
 	 * Update counters for the next iteration.
