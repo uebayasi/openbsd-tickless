@@ -79,6 +79,8 @@ void	lapic_map(paddr_t);
 void lapic_timer_start(struct timerdev *, sbintime_t, sbintime_t);
 void lapic_timer_stop(struct timerdev *);
 
+void lapic_timer_oneshot(sbintime_t);
+void lapic_timer_periodic(sbintime_t);
 void lapic_timer_oneshot_raw(u_long);
 void lapic_timer_periodic_raw(u_long);
 
@@ -569,7 +571,7 @@ lapic_calibrate_timer(struct cpu_info *ci)
 void
 lapic_timer_start(struct timerdev *td, sbintime_t first, sbintime_t period)
 {
-	lapic_timer_oneshot_raw(lapic_timer_count_1hz);
+	lapic_timer_oneshot(first);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
 	    LAPIC_TIMER_VECTOR);
 }
@@ -577,6 +579,31 @@ lapic_timer_start(struct timerdev *td, sbintime_t first, sbintime_t period)
 void
 lapic_timer_stop(struct timerdev *td)
 {
+}
+
+#define	SBT2LAPIC(sbt)	(u_long)(((int64_t)lapic_per_second * (sbt)) >> 32)
+
+void
+lapic_timer_oneshot(sbintime_t future)
+{
+#ifdef notyet
+	sbintime_t now, diff;
+	u_long count;
+
+	now = sbinuptime();
+	diff = future - now;
+	count = SBT2LAPIC(diff);
+
+	lapic_timer_oneshot_raw(count);
+#else
+	lapic_timer_oneshot_raw(lapic_timer_count_1hz);
+#endif
+}
+
+void
+lapic_timer_periodic(sbintime_t sbtcount)
+{
+	// XXX
 }
 
 void

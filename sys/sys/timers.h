@@ -27,4 +27,20 @@ struct timerev {
 	u_long te_nexttick;
 };
 
+/*
+ * kern_timer - Global timer state
+ */
+
+struct kern_timer {
+	struct timerdev *timerdev;
+	sbintime_t prev;
+	sbintime_t now;
+	sbintime_t next;
+	sbintime_t sbt_1hz;
+};
+
+extern struct kern_timer kern_timer;
+
+void kern_timer_init(void);
+
 #endif /* _SYS_TIMERS_H_ */

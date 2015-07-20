@@ -3,10 +3,15 @@
 #include <sys/kernel.h>
 #include <sys/timers.h>
 
-struct kern_timer {
-	struct timerdev *timerdev;
-	sbintime_t now;
-} kern_timer;
+struct kern_timer kern_timer;
+
+void
+kern_timer_init(void)
+{
+	kern_timer.sbt_1hz = SBT_1S / hz;
+	kern_timer.prev = kern_timer.now = kern_timer.next = sbinuptime();
+	kern_timer.next += kern_timer.sbt_1hz;
+}
 
 void
 timerdev_handler(struct clockframe *frame)
@@ -25,6 +30,10 @@ timerdev_handler(struct clockframe *frame)
 	if (CPU_IS_PRIMARY(ci)) {
 		ticks++;
 		kern_timer.now = sbinuptime();
+		if (kern_timer.prev < kern_timer.now) {
+			kern_timer.prev = kern_timer.now;
+			kern_timer.next += kern_timer.sbt_1hz;
+		}
 	}
 
 	(*timerev_prof.te_handler)(&timerev_prof, frame);
@@ -34,7 +43,13 @@ timerdev_handler(struct clockframe *frame)
 	/*
 	 * Schedule the next tick.
 	 */
-	(*kern_timer.timerdev->td_start)(kern_timer.timerdev, 0, 0);
+	(*kern_timer.timerdev->td_start)(kern_timer.timerdev,
+	    kern_timer.next, 0);
+
+	if (CPU_IS_PRIMARY(ci)) {
+		kern_timer.prev = kern_timer.next;
+		kern_timer.next += kern_timer.sbt_1hz;
+	}
 }
 
 void

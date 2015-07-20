@@ -136,6 +136,11 @@ initclocks(void)
 		tickadj = 1;
 
 	inittimecounter();
+
+	/*
+	 * Init kern_timer.
+	 */
+	kern_timer_init();
 }
 
 /*
