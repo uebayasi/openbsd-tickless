@@ -1,0 +1,11 @@
+tickless
+========
+
+What's done
+-----------
+
+- sbintime_t integrated
+- LAPIC `oneshot' implemented
+- `struct timerdev' introduced
+- `struct timerev' introduced
+- timer_handler() introduced to replace hardclock()
