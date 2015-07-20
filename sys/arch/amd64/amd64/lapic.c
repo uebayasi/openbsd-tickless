@@ -584,20 +584,13 @@ lapic_timer_stop(struct timerdev *td)
 #define	SBT2LAPIC(sbt)	(u_long)(((int64_t)lapic_per_second * (sbt)) >> 32)
 
 void
-lapic_timer_oneshot(sbintime_t future)
+lapic_timer_oneshot(sbintime_t diff)
 {
-#ifdef notyet
-	sbintime_t now, diff;
 	u_long count;
 
-	now = sbinuptime();
-	diff = future - now;
 	count = SBT2LAPIC(diff);
 
 	lapic_timer_oneshot_raw(count);
-#else
-	lapic_timer_oneshot_raw(lapic_timer_count_1hz);
-#endif
 }
 
 void

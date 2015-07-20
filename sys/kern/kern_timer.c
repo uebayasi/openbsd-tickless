@@ -29,15 +29,19 @@ kern_timer_init(void)
 	kern_timer.sbt_1hz = SBT_1S / hz;
 	kern_timer.prev = kern_timer.now = kern_timer.next = sbinuptime();
 	kern_timer.next += kern_timer.sbt_1hz;
+	kern_timer.nextdiffmin = kern_timer.sbt_1hz * 9 / 10;
+	kern_timer.nextdiffmax = kern_timer.sbt_1hz * 11 / 10;
 }
+
+extern struct timerev timerev_prof;
+extern struct timerev timerev_stat;
+extern struct timerev timerev_hard;
 
 void
 timerdev_handler(struct clockframe *frame)
 {
 	struct cpu_info *ci = curcpu();
-	extern struct timerev timerev_prof;
-	extern struct timerev timerev_stat;
-	extern struct timerev timerev_hard;
+	sbintime_t nextdiff;
 
 	KASSERT(stathz == 0);
 
@@ -48,12 +52,21 @@ timerdev_handler(struct clockframe *frame)
 	if (CPU_IS_PRIMARY(ci)) {
 		ticks++;
 		kern_timer.now = sbinuptime();
-		if (kern_timer.prev < kern_timer.now) {
-			kern_timer.prev = kern_timer.now;
+		nextdiff = kern_timer.next - kern_timer.now;
+		if (nextdiff < kern_timer.nextdiffmin ||
+		    nextdiff > kern_timer.nextdiffmax) {
+			if (nextdiff < kern_timer.nextdiffmin)
+				printf("x");
+			if (nextdiff > kern_timer.nextdiffmax)
+				printf("X");
+			kern_timer.prev = kern_timer.next = kern_timer.now;
 			kern_timer.next += kern_timer.sbt_1hz;
 		}
 	}
 
+	/*
+	 * Handle events.
+	 */
 	(*timerev_prof.te_handler)(&timerev_prof, frame);
 	(*timerev_stat.te_handler)(&timerev_stat, frame);
 	(*timerev_hard.te_handler)(&timerev_hard, frame);
@@ -62,8 +75,11 @@ timerdev_handler(struct clockframe *frame)
 	 * Schedule the next tick.
 	 */
 	(*kern_timer.timerdev->td_start)(kern_timer.timerdev,
-	    kern_timer.next, 0);
+	    kern_timer.next - kern_timer.now, 0);
 
+	/*
+	 * Update counters for the next iteration.
+	 */
 	if (CPU_IS_PRIMARY(ci)) {
 		kern_timer.prev = kern_timer.next;
 		kern_timer.next += kern_timer.sbt_1hz;
