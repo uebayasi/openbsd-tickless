@@ -12,12 +12,21 @@ void statclock(struct clockframe *);
 void
 timerdev_handler(struct clockframe *frame)
 {
+	struct cpu_info *ci = curcpu();
 	extern int stathz;
 	extern struct timerev timerev_prof;
 	extern struct timerev timerev_stat;
 	extern struct timerev timerev_hard;
 
 	KASSERT(stathz == 0);
+
+	/*
+         * Update ticks first, so that all timer handlers can equally
+         * see the same, updated value.
+	 */
+	if (CPU_IS_PRIMARY(ci)) {
+		ticks++;
+	}
 
 	(*timerev_prof.te_handler)(&timerev_prof, frame);
 	(*timerev_stat.te_handler)(&timerev_stat, frame);
