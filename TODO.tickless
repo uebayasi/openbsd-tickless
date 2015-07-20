@@ -1,1 +1,7 @@
-o Calculate exact `next' time
+o Calculate exact `next' time in timer_handler()
+o Implement TSC delay(9)
+o Extend timeout(9) as per-CPU
+o Implement HPET timerdev
+o Implement APIC timerdev
+o Make `ticks' unsigned
+o Hide `ticks'
