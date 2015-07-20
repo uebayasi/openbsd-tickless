@@ -144,6 +144,7 @@ typedef	__key_t		key_t;		/* IPC key (for Sys V IPC) */
 typedef	__mode_t	mode_t;		/* permissions */
 typedef	__nlink_t	nlink_t;	/* link count */
 typedef	__rlim_t	rlim_t;		/* resource limit */
+typedef	__sbintime_t	sbintime_t;	/* shrinked binary time */
 typedef	__segsz_t	segsz_t;	/* segment size */
 typedef	__swblk_t	swblk_t;	/* swap offset */
 typedef	__uid_t		uid_t;		/* user id */

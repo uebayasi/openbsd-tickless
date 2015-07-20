@@ -57,6 +57,7 @@ typedef	__int64_t	__off_t;	/* file offset or size */
 typedef	__int32_t	__pid_t;	/* process id */
 typedef	__uint64_t	__rlim_t;	/* resource limit */
 typedef	__uint8_t	__sa_family_t;	/* sockaddr address family type */
+typedef	__int64_t	__sbintime_t;	/* shrinked binary time */
 typedef	__int32_t	__segsz_t;	/* segment size */
 typedef	__uint32_t	__socklen_t;	/* length type for network syscalls */
 typedef	long		__suseconds_t;	/* microseconds (signed) */

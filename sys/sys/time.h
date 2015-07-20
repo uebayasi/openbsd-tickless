@@ -200,6 +200,37 @@ bintime_sub(struct bintime *bt, struct bintime *bt2)
 	bt->sec -= bt2->sec;
 }
 
+#define	SBT_1S	((sbintime_t)1 << 32)
+#define	SBT_1M	(SBT_1S * 60)
+#define	SBT_1MS	(SBT_1S / 1000)
+#define	SBT_1US	(SBT_1S / 1000000)
+#define	SBT_1NS	(SBT_1S / 1000000000)
+#define	SBT_MAX	0x7fffffffffffffffLL
+
+static __inline int
+sbintime_getsec(sbintime_t _sbt)
+{
+
+	return (_sbt >> 32);
+}
+
+static __inline sbintime_t
+bttosbt(const struct bintime _bt)
+{
+
+	return (((sbintime_t)_bt.sec << 32) + (_bt.frac >> 32));
+}
+
+static __inline struct bintime
+sbttobt(sbintime_t _sbt)
+{
+	struct bintime _bt;
+
+	_bt.sec = _sbt >> 32;
+	_bt.frac = _sbt << 32;
+	return (_bt);
+}
+
 /*-
  * Background information:
  *
