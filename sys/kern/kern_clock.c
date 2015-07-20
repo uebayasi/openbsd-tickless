@@ -49,6 +49,7 @@
 #include <sys/sysctl.h>
 #include <sys/sched.h>
 #include <sys/timetc.h>
+#include <sys/timers.h>
 
 
 #ifdef GPROF
@@ -145,14 +146,24 @@ initclocks(void)
  * userspace it signals itself.
  */
 
-/*
- * The real-time timer, interrupting hz times per second.
- */
+void profclock_handler(struct timerev *, struct clockframe *);
+void profclock(struct clockframe *);
+
+struct timerev timerev_prof = {
+	.te_handler = profclock_handler
+};
+
 void
-hardclock(struct clockframe *frame)
+profclock_handler(struct timerev *te, struct clockframe *frame)
+{
+	profclock(frame);
+	// XXX nexttick
+}
+
+void
+profclock(struct clockframe *frame)
 {
 	struct proc *p;
-	struct cpu_info *ci = curcpu();
 
 	p = curproc;
 	if (p && ((p->p_flag & (P_SYSTEM | P_WEXIT)) == 0)) {
@@ -173,12 +184,28 @@ hardclock(struct clockframe *frame)
 			need_proftick(p);
 		}
 	}
+}
 
-	/*
-	 * If no separate statistics clock is available, run it from here.
-	 */
-	if (stathz == 0)
-		statclock(frame);
+void hardclock_handler(struct timerev *, struct clockframe *);
+
+struct timerev timerev_hard = {
+	.te_handler = hardclock_handler
+};
+
+void
+hardclock_handler(struct timerev *te, struct clockframe *frame)
+{
+	hardclock(frame);
+	// XXX nexttick
+}
+
+/*
+ * The real-time timer, interrupting hz times per second.
+ */
+void
+hardclock(struct clockframe *frame)
+{
+	struct cpu_info *ci = curcpu();
 
 	if (--ci->ci_schedstate.spc_rrticks <= 0)
 		roundrobin(ci);
@@ -305,6 +332,19 @@ stopprofclock(struct process *pr)
 			splx(s);
 		}
 	}
+}
+
+void statclock_handler(struct timerev *, struct clockframe *);
+
+struct timerev timerev_stat = {
+	.te_handler = statclock_handler
+};
+
+void
+statclock_handler(struct timerev *te, struct clockframe *frame)
+{
+	statclock(frame);
+	// XXX nexttick
 }
 
 /*
