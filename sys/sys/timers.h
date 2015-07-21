@@ -62,6 +62,9 @@ struct kern_timer {
 	sbintime_t next;
 	sbintime_t nextdiffmin;
 	sbintime_t nextdiffmax;
+
+	struct timerev **events;
+	int nevents;
 };
 
 extern struct kern_timer kern_timer;

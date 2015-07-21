@@ -23,6 +23,10 @@
 
 struct kern_timer kern_timer;
 
+struct timerev *timer_events[] = {
+	&timerev_prof, &timerev_stat, &timerev_hard
+};
+
 void
 kern_timer_init(void)
 {
@@ -31,6 +35,9 @@ kern_timer_init(void)
 	kern_timer.next += kern_timer.sbt_1hz;
 	kern_timer.nextdiffmin = kern_timer.sbt_1hz * 9 / 10;
 	kern_timer.nextdiffmax = kern_timer.sbt_1hz * 11 / 10;
+
+	kern_timer.events = timer_events;
+	kern_timer.nevents = nitems(timer_events);
 }
 
 void
@@ -38,6 +45,7 @@ timerdev_handler(struct clockframe *frame)
 {
 	struct cpu_info *ci = curcpu();
 	sbintime_t nextdiff;
+	int i;
 
 	KASSERT(stathz == 0);
 
@@ -68,9 +76,10 @@ timerdev_handler(struct clockframe *frame)
 	/*
 	 * Handle events.
 	 */
-	(*timerev_prof.te_handler)(&timerev_prof, frame, &nextdiff);
-	(*timerev_stat.te_handler)(&timerev_stat, frame, &nextdiff);
-	(*timerev_hard.te_handler)(&timerev_hard, frame, &nextdiff);
+	for (i = 0; i < kern_timer.nevents; i++) {
+		struct timerev *te = kern_timer.events[i];
+		(*te->te_handler)(te, frame, &nextdiff);
+	}
 
 	/*
 	 * Schedule the next tick.
