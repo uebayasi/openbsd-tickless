@@ -205,8 +205,35 @@ void
 hardclock_handler(struct timerev *te, struct clockframe *frame,
     sbintime_t *nextdiffp)
 {
+	struct cpu_info *ci = curcpu();
+	sbintime_t nextdiff;
+
+	if (CPU_IS_PRIMARY(ci)) {
+		nextdiff = kern_timer.next - kern_timer.now;
+
+		/*
+		 * If timer is getting inaccurate, forcibly reset it.
+		 */
+		if (nextdiff < kern_timer.nextdiffmin ||
+		    nextdiff > kern_timer.nextdiffmax) {
+			if (nextdiff < kern_timer.nextdiffmin)
+				printf("x");
+			if (nextdiff > kern_timer.nextdiffmax)
+				printf("X");
+			kern_timer.prev = kern_timer.next = kern_timer.now;
+			kern_timer.next += kern_timer.sbt_1hz;
+			nextdiff = kern_timer.sbt_1hz;
+		}
+
+		*nextdiffp = nextdiff;
+
+		/*
+		 * Update counters for the next iteration.
+		 */
+		kern_timer.prev = kern_timer.next;
+		kern_timer.next += nextdiff;
+	}
 	hardclock(frame);
-	// XXX nexttick
 }
 
 /*
