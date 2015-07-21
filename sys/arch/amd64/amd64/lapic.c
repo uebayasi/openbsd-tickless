@@ -37,6 +37,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/device.h>
+#include <sys/time.h>
 #include <sys/timers.h>
 
 #include <uvm/uvm_extern.h>
@@ -75,7 +76,7 @@ void	lapic_clockintr(void *, struct intrframe);
 void	lapic_initclocks(void);
 void	lapic_map(paddr_t);
 
-void lapic_timer_start(struct timerdev *, u_long, u_long);
+void lapic_timer_start(struct timerdev *, sbintime_t, sbintime_t);
 void lapic_timer_stop(struct timerdev *);
 
 void lapic_timer_oneshot(u_long);
@@ -566,7 +567,7 @@ lapic_calibrate_timer(struct cpu_info *ci)
 }
 
 void
-lapic_timer_start(struct timerdev *td, u_long first, u_long period)
+lapic_timer_start(struct timerdev *td, sbintime_t first, sbintime_t period)
 {
 	lapic_timer_oneshot(lapic_timer_periodic_count);
 	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
