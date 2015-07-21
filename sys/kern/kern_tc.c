@@ -126,6 +126,46 @@ tc_delta(struct timehands *th)
 	    tc->tc_counter_mask);
 }
 
+#if 1 // XXX sys/cdefs.h
+/*
+ * A barrier to stop the optimizer from moving code or assume live
+ * register values. This is gcc specific, the version is more or less
+ * arbitrary, might work with older compilers.
+ */
+#if __GNUC_PREREQ__(2, 95)
+#define	__insn_barrier()	__asm __volatile("":::"memory")
+#else
+#define	__insn_barrier()	/* */
+#endif
+#endif // 1
+
+static inline u_int
+tc_getgen(struct timehands *th)
+{
+
+#ifdef MULTIPROCESSOR
+	return th->th_generation;	// XXX atomic_load_acq_int
+#else
+	u_int gen;
+
+	gen = th->th_generation;
+	__insn_barrier();
+	return (gen);
+#endif
+}
+
+static inline void
+tc_setgen(struct timehands *th, u_int newgen)
+{
+
+#ifdef MULTIPROCESSOR
+	th->th_generation = newgen;	// XXX atomic_store_rel_int
+#else
+	__insn_barrier();
+	th->th_generation = newgen;
+#endif
+}
+
 /*
  * Functions for reading the time.  We have to loop until we are sure that
  * the timehands that we operated on was not updated under our feet.  See
@@ -188,6 +228,19 @@ microtime(struct timeval *tvp)
 
 	bintime(&bt);
 	bintime2timeval(&bt, tvp);
+}
+
+void
+getbinuptime(struct bintime *bt)
+{
+	struct timehands *th;
+	u_int gen;
+
+	do {
+		th = timehands;
+		gen = tc_getgen(th);
+		*bt = th->th_offset;
+	} while (gen == 0 || gen != tc_getgen(th));
 }
 
 void

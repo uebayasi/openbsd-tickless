@@ -307,6 +307,7 @@ void	bintime(struct bintime *);
 void	nanotime(struct timespec *);
 void	microtime(struct timeval *);
 
+void	getbinuptime(struct bintime *);
 void	getnanotime(struct timespec *);
 void	getmicrotime(struct timeval *);
 
