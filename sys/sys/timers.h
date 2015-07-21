@@ -33,15 +33,20 @@ struct timerdev {
 	void (*td_stop)(struct timerdev *);
 };
 
-void		timerdev_register(struct timerdev *);
-void		timerdev_handler(struct clockframe *);
+void timerdev_register(struct timerdev *);
+void timerdev_handler(struct clockframe *);
+
+extern struct timerev timerev_prof;
+extern struct timerev timerev_stat;
+extern struct timerev timerev_hard;
 
 /*
  * timerev - Timer event
  */
 
 struct timerev {
-	void (*te_handler)(struct timerev *, struct clockframe *);
+	void (*te_handler)(struct timerev *, struct clockframe *,
+	    sbintime_t *);
 	u_long te_nexttick;
 };
 

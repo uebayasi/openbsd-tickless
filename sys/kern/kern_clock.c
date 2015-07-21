@@ -151,7 +151,7 @@ initclocks(void)
  * userspace it signals itself.
  */
 
-void profclock_handler(struct timerev *, struct clockframe *);
+void profclock_handler(struct timerev *, struct clockframe *, sbintime_t *);
 void profclock(struct clockframe *);
 
 struct timerev timerev_prof = {
@@ -159,7 +159,8 @@ struct timerev timerev_prof = {
 };
 
 void
-profclock_handler(struct timerev *te, struct clockframe *frame)
+profclock_handler(struct timerev *te, struct clockframe *frame,
+    sbintime_t *nextdiffp)
 {
 	profclock(frame);
 	// XXX nexttick
@@ -191,14 +192,18 @@ profclock(struct clockframe *frame)
 	}
 }
 
-void hardclock_handler(struct timerev *, struct clockframe *);
+struct hardclock_timer {
+};
+
+void hardclock_handler(struct timerev *, struct clockframe *, sbintime_t *);
 
 struct timerev timerev_hard = {
 	.te_handler = hardclock_handler
 };
 
 void
-hardclock_handler(struct timerev *te, struct clockframe *frame)
+hardclock_handler(struct timerev *te, struct clockframe *frame,
+    sbintime_t *nextdiffp)
 {
 	hardclock(frame);
 	// XXX nexttick
@@ -339,14 +344,15 @@ stopprofclock(struct process *pr)
 	}
 }
 
-void statclock_handler(struct timerev *, struct clockframe *);
+void statclock_handler(struct timerev *, struct clockframe *, sbintime_t *);
 
 struct timerev timerev_stat = {
 	.te_handler = statclock_handler
 };
 
 void
-statclock_handler(struct timerev *te, struct clockframe *frame)
+statclock_handler(struct timerev *te, struct clockframe *frame,
+    sbintime_t *nextdiffp)
 {
 	statclock(frame);
 	// XXX nexttick
