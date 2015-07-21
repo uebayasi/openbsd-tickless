@@ -20,6 +20,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/timers.h>
+#include <sys/stdint.h>
 
 struct kern_timer kern_timer;
 
@@ -61,15 +62,23 @@ timerdev_handler(struct clockframe *frame)
 	/*
 	 * Handle events.
 	 */
+	nextdiff = INT64_MAX;
 	for (i = 0; i < kern_timer.nevents; i++) {
 		struct timerev *te = kern_timer.events[i];
-		(*te->te_handler)(te, frame, &nextdiff);
+		sbintime_t tmpnextdiff = INT64_MAX;
+
+		(*te->te_handler)(te, frame, &tmpnextdiff);
+
+		if (tmpnextdiff < nextdiff)
+			nextdiff = tmpnextdiff;
 	}
 
 	/*
 	 * Schedule the next tick.
 	 */
-	(*kern_timer.timerdev->td_start)(kern_timer.timerdev, nextdiff, 0);
+	if (nextdiff != INT64_MAX)
+		(*kern_timer.timerdev->td_start)(kern_timer.timerdev, nextdiff,
+		    0);
 }
 
 void

@@ -233,6 +233,9 @@ hardclock_handler(struct timerev *te, struct clockframe *frame,
 		kern_timer.prev = kern_timer.next;
 		kern_timer.next += nextdiff;
 	}
+	/*
+	 * XXX Execute only if now is our timing.
+	 */
 	hardclock(frame);
 }
 
