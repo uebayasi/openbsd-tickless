@@ -1,19 +1,16 @@
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/timers.h>
 
 struct kern_timer {
 	struct timerdev *timerdev;
 } kern_timer;
 
-void profclock(struct clockframe *);
-void statclock(struct clockframe *);
-
 void
 timerdev_handler(struct clockframe *frame)
 {
 	struct cpu_info *ci = curcpu();
-	extern int stathz;
 	extern struct timerev timerev_prof;
 	extern struct timerev timerev_stat;
 	extern struct timerev timerev_hard;
