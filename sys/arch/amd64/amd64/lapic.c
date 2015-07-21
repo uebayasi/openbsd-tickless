@@ -412,12 +412,6 @@ lapic_clockintr(void *arg, struct intrframe frame)
 	ci->ci_handled_intr_level = floor;
 
 	clk_count.ec_count++;
-
-#ifdef LAPIC_ONESHOT
-	lapic_timer_oneshot(lapic_timer_periodic_count);
-	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
-	    LAPIC_TIMER_VECTOR);
-#endif
 }
 
 void
@@ -574,6 +568,9 @@ lapic_calibrate_timer(struct cpu_info *ci)
 void
 lapic_timer_start(struct timerdev *td, u_long first, u_long period)
 {
+	lapic_timer_oneshot(lapic_timer_periodic_count);
+	lapic_writereg(LAPIC_LVTT, LAPIC_LVTT_TM_ONESHOT |
+	    LAPIC_TIMER_VECTOR);
 }
 
 void

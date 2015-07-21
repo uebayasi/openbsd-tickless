@@ -5,6 +5,7 @@
 
 struct kern_timer {
 	struct timerdev *timerdev;
+	sbintime_t now;
 } kern_timer;
 
 void
@@ -23,11 +24,17 @@ timerdev_handler(struct clockframe *frame)
 	 */
 	if (CPU_IS_PRIMARY(ci)) {
 		ticks++;
+		kern_timer.now = sbinuptime();
 	}
 
 	(*timerev_prof.te_handler)(&timerev_prof, frame);
 	(*timerev_stat.te_handler)(&timerev_stat, frame);
 	(*timerev_hard.te_handler)(&timerev_hard, frame);
+
+	/*
+	 * Schedule the next tick.
+	 */
+	(*kern_timer.timerdev->td_start)(kern_timer.timerdev, 0, 0);
 }
 
 void
