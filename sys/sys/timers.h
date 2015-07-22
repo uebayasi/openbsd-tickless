@@ -45,6 +45,7 @@ extern struct timerev timerev_hard;
  */
 
 struct timerev {
+	void (*te_init)(struct timerev *);
 	void (*te_handler)(struct timerev *, struct clockframe *,
 	    sbintime_t *);
 	u_long te_nexttick;

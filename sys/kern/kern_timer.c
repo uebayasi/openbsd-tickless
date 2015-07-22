@@ -31,14 +31,15 @@ struct timerev *timer_events[] = {
 void
 kern_timer_init(void)
 {
-	kern_timer.sbt_1hz = SBT_1S / hz;
-	kern_timer.prev = kern_timer.now = kern_timer.next = sbinuptime();
-	kern_timer.next += kern_timer.sbt_1hz;
-	kern_timer.nextdiffmin = kern_timer.sbt_1hz * 9 / 10;
-	kern_timer.nextdiffmax = kern_timer.sbt_1hz * 11 / 10;
+	int i;
 
 	kern_timer.events = timer_events;
 	kern_timer.nevents = nitems(timer_events);
+
+	for (i = 0; i < kern_timer.nevents; i++) {
+		struct timerev *te = kern_timer.events[i];
+		(*te->te_init)(te);
+	}
 }
 
 void

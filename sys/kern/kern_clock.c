@@ -151,12 +151,19 @@ initclocks(void)
  * userspace it signals itself.
  */
 
+void profclock_init(struct timerev *);
 void profclock_handler(struct timerev *, struct clockframe *, sbintime_t *);
 void profclock(struct clockframe *);
 
 struct timerev timerev_prof = {
+	.te_init = profclock_init,
 	.te_handler = profclock_handler
 };
+
+void
+profclock_init(struct timerev *te)
+{
+}
 
 void
 profclock_handler(struct timerev *te, struct clockframe *frame,
@@ -195,11 +202,23 @@ profclock(struct clockframe *frame)
 struct hardclock_timer {
 };
 
+void hardclock_init(struct timerev *);
 void hardclock_handler(struct timerev *, struct clockframe *, sbintime_t *);
 
 struct timerev timerev_hard = {
+	.te_init = hardclock_init,
 	.te_handler = hardclock_handler
 };
+
+void
+hardclock_init(struct timerev *te)
+{
+	kern_timer.sbt_1hz = SBT_1S / hz;
+	kern_timer.prev = kern_timer.now = kern_timer.next = sbinuptime();
+	kern_timer.next += kern_timer.sbt_1hz;
+	kern_timer.nextdiffmin = kern_timer.sbt_1hz * 9 / 10;
+	kern_timer.nextdiffmax = kern_timer.sbt_1hz * 11 / 10;
+}
 
 void
 hardclock_handler(struct timerev *te, struct clockframe *frame,
@@ -374,11 +393,18 @@ stopprofclock(struct process *pr)
 	}
 }
 
+void statclock_init(struct timerev *);
 void statclock_handler(struct timerev *, struct clockframe *, sbintime_t *);
 
 struct timerev timerev_stat = {
+	.te_init = statclock_init,
 	.te_handler = statclock_handler
 };
+
+void
+statclock_init(struct timerev *te)
+{
+}
 
 void
 statclock_handler(struct timerev *te, struct clockframe *frame,
