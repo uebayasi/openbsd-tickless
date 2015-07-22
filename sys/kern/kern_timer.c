@@ -33,6 +33,7 @@ kern_timer_init(void)
 {
 	int i;
 
+	kern_timer.now = sbinuptime();
 	kern_timer.events = timer_events;
 	kern_timer.nevents = nitems(timer_events);
 

@@ -200,9 +200,15 @@ profclock(struct clockframe *frame)
 }
 
 struct hardclock_timer {
-};
+	sbintime_t sbt_1hz;
+	sbintime_t prev;
+	sbintime_t next;
+	sbintime_t nextdiffmin;
+	sbintime_t nextdiffmax;
+} hardclock_timer;
 
 void hardclock_init(struct timerev *);
+void hardclock_reset(struct timerev *);
 void hardclock_handler(struct timerev *, struct clockframe *, sbintime_t *);
 
 struct timerev timerev_hard = {
@@ -213,11 +219,17 @@ struct timerev timerev_hard = {
 void
 hardclock_init(struct timerev *te)
 {
-	kern_timer.sbt_1hz = SBT_1S / hz;
-	kern_timer.prev = kern_timer.now = kern_timer.next = sbinuptime();
-	kern_timer.next += kern_timer.sbt_1hz;
-	kern_timer.nextdiffmin = kern_timer.sbt_1hz * 9 / 10;
-	kern_timer.nextdiffmax = kern_timer.sbt_1hz * 11 / 10;
+	hardclock_timer.sbt_1hz = SBT_1S / hz;
+	hardclock_timer.nextdiffmin = hardclock_timer.sbt_1hz * 9 / 10;
+	hardclock_timer.nextdiffmax = hardclock_timer.sbt_1hz * 11 / 10;
+	hardclock_reset(te);
+}
+
+void
+hardclock_reset(struct timerev *te)
+{
+	hardclock_timer.prev = hardclock_timer.next = kern_timer.now;
+	hardclock_timer.next += hardclock_timer.sbt_1hz;
 }
 
 void
@@ -228,20 +240,19 @@ hardclock_handler(struct timerev *te, struct clockframe *frame,
 	sbintime_t nextdiff;
 
 	if (CPU_IS_PRIMARY(ci)) {
-		nextdiff = kern_timer.next - kern_timer.now;
+		nextdiff = hardclock_timer.next - kern_timer.now;
 
 		/*
 		 * If timer is getting inaccurate, forcibly reset it.
 		 */
-		if (nextdiff < kern_timer.nextdiffmin ||
-		    nextdiff > kern_timer.nextdiffmax) {
-			if (nextdiff < kern_timer.nextdiffmin)
+		if (nextdiff < hardclock_timer.nextdiffmin ||
+		    nextdiff > hardclock_timer.nextdiffmax) {
+			if (nextdiff < hardclock_timer.nextdiffmin)
 				printf("x");
-			if (nextdiff > kern_timer.nextdiffmax)
+			if (nextdiff > hardclock_timer.nextdiffmax)
 				printf("X");
-			kern_timer.prev = kern_timer.next = kern_timer.now;
-			kern_timer.next += kern_timer.sbt_1hz;
-			nextdiff = kern_timer.sbt_1hz;
+			hardclock_reset(te);
+			nextdiff = hardclock_timer.sbt_1hz;
 		}
 
 		*nextdiffp = nextdiff;
@@ -249,8 +260,8 @@ hardclock_handler(struct timerev *te, struct clockframe *frame,
 		/*
 		 * Update counters for the next iteration.
 		 */
-		kern_timer.prev = kern_timer.next;
-		kern_timer.next += nextdiff;
+		hardclock_timer.prev = hardclock_timer.next;
+		hardclock_timer.next += nextdiff;
 	}
 	/*
 	 * XXX Execute only if now is our timing.

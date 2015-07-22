@@ -57,12 +57,7 @@ struct timerev {
 
 struct kern_timer {
 	struct timerdev *timerdev;
-	sbintime_t sbt_1hz;
-	sbintime_t prev;
 	sbintime_t now;
-	sbintime_t next;
-	sbintime_t nextdiffmin;
-	sbintime_t nextdiffmax;
 
 	struct timerev **events;
 	int nevents;
