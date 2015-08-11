@@ -180,7 +180,48 @@ timeout_set(struct timeout *new, void (*fn)(void *), void *arg)
 }
 
 
-int timeout_switch[2]; /* [success, cancel] */
+int timeout_switch(struct timeout *);
+
+int timeout_switches[2]; /* [success, cancel] */
+
+/*
+ * Switch to another CPU if not bound.
+ */
+int
+timeout_switch(struct timeout *new)
+{
+	struct timeout_cpu *toc = new->to_cpu;
+	CPU_INFO_ITERATOR cii;
+	struct cpu_info *oci, *nci;
+
+	if ((new->to_flags & TIMEOUT_BOUND) != 0)
+		return 0;
+	CPU_INFO_FOREACH(cii, oci) {
+		if (oci->ci_timeout == toc)
+			break;
+	}
+	CPU_INFO_FOREACH(cii, nci) {
+		if (nci->ci_timeout != toc)
+			break;
+	}
+	if (oci != NULL && nci != NULL) {
+		struct timeout_cpu *new_toc = nci->ci_timeout;
+
+		if (!mtx_enter_try(&new_toc->toc_mutex)) {
+			printf("timeout: switch cancel\n");
+			timeout_switches[1]++;
+			return 0;
+		}
+		mtx_leave(&toc->toc_mutex);
+#if 0
+		printf("timeout %p: switch cpu: %d -> %d\n",
+		    new, oci->ci_cpuid, nci->ci_cpuid);
+#endif
+		new->to_cpu = new_toc;
+		timeout_switches[0]++;
+	}
+	return 1;
+}
 
 int
 timeout_add(struct timeout *new, int to_ticks)
@@ -223,44 +264,13 @@ timeout_add(struct timeout *new, int to_ticks)
 		ret = 0;
 	} else {
 #if 1
-		/*
-		 * Switch to another CPU if not bound.
-		 */
-		CPU_INFO_ITERATOR cii;
-		struct cpu_info *oci, *nci;
-
-		if ((new->to_flags & TIMEOUT_BOUND) != 0)
-			goto enqueue;
-		CPU_INFO_FOREACH(cii, oci) {
-			if (oci->ci_timeout == toc)
-				break;
-		}
-		CPU_INFO_FOREACH(cii, nci) {
-			if (nci->ci_timeout != toc)
-				break;
-		}
-		if (oci != NULL && nci != NULL) {
-			struct timeout_cpu *new_toc = nci->ci_timeout;
-
-			if (!mtx_enter_try(&new_toc->toc_mutex)) {
-				printf("timeout: switch cancel\n");
-				timeout_switch[1]++;
-				goto enqueue;
-			}
-			mtx_leave(&toc->toc_mutex);
-#if 0
-			printf("timeout %p: switch cpu: %d -> %d\n",
-			    new, oci->ci_cpuid, nci->ci_cpuid);
-#endif
-			new->to_cpu = new_toc;
-			timeout_switch[0]++;
-		}
-enqueue:
+		if (timeout_switch(new))
+			toc = new->to_cpu;
 #endif
 		new->to_flags |= TIMEOUT_ONQUEUE;
 		CIRCQ_INSERT(&new->to_list, &toc->toc_todo);
 	}
-	mtx_leave(&new->to_cpu->toc_mutex);
+	mtx_leave(&toc->toc_mutex);
 
 	KASSERT(new->to_cpu != NULL);
 
