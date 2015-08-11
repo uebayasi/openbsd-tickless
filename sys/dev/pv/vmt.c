@@ -373,9 +373,22 @@ vmt_attach(struct device *parent, struct device *self, void *aux)
 	sensor_attach(&sc->sc_sensordev, &sc->sc_sensor);
 	sensordev_install(&sc->sc_sensordev);
 
+	timeout_set(&sc->sc_tick, vmt_tick, sc);
+#ifdef TIMEOUT_MPSAFE
+	sc->sc_tick.to_flags |= TIMEOUT_MPSAFE;
+#endif
+#ifdef TIMEOUT_BOUND
+	sc->sc_tick.to_flags &= ~TIMEOUT_BOUND;
+#endif
 	config_mountroot(self, vmt_tick_hook);
 
 	timeout_set(&sc->sc_tclo_tick, vmt_tclo_tick, sc);
+#ifdef TIMEOUT_MPSAFE
+	sc->sc_tclo_tick.to_flags |= TIMEOUT_MPSAFE;
+#endif
+#ifdef TIMEOUT_BOUND
+	sc->sc_tclo_tick.to_flags &= ~TIMEOUT_BOUND;
+#endif
 	timeout_add_sec(&sc->sc_tclo_tick, 1);
 	sc->sc_tclo_ping = 1;
 
