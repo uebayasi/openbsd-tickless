@@ -72,6 +72,7 @@ struct timeout {
 #define TIMEOUT_INITIALIZED	4	/* timeout is initialized */
 #define TIMEOUT_TRIGGERED	8	/* timeout is running or ran */
 #define TIMEOUT_MPSAFE		16	/* timeout is MP-safe */
+#define TIMEOUT_BOUND		32	/* timeout is bound to CPU */
 
 #ifdef _KERNEL
 /*
