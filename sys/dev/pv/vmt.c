@@ -542,6 +542,8 @@ vmt_update_guest_info(struct vmt_softc *sc)
 	}
 }
 
+int vmt_ticks[MAXCPUS];
+
 void
 vmt_tick_hook(struct device *self)
 {
@@ -554,6 +556,7 @@ vmt_tick_hook(struct device *self)
 void
 vmt_tick(void *xarg)
 {
+	vmt_ticks[cpu_number()]++;
 	struct vmt_softc *sc = xarg;
 	struct vm_backdoor frame;
 	struct timeval *guest = &sc->sc_sensor.tv;
@@ -848,9 +851,12 @@ vmt_tclo_process(struct vmt_softc *sc, const char *name)
 	return (-1);
 }
 
+int vmt_tclo_ticks[MAXCPUS];
+
 void
 vmt_tclo_tick(void *xarg)
 {
+	vmt_tclo_ticks[cpu_number()]++;
 	struct vmt_softc *sc = xarg;
 	u_int32_t rlen;
 	u_int16_t ack;
