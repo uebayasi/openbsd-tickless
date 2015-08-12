@@ -182,7 +182,7 @@ timeout_set(struct timeout *new, void (*fn)(void *), void *arg)
 
 int timeout_switch(struct timeout *);
 
-int timeout_switches[2]; /* [success, cancel] */
+int timeout_switches[MAXCPUS]; /* [success, cancel] */
 
 /*
  * Switch to another CPU if not bound.
@@ -404,7 +404,7 @@ timeout_hardclock_update(void)
 	return (ret);
 }
 
-int nsoftclocks[2];
+int nsoftclocks[MAXCPUS];
 
 void
 softclock(void *arg)
