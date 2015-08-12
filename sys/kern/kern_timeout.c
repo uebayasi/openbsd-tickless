@@ -190,36 +190,35 @@ int timeout_switches[2]; /* [success, cancel] */
 int
 timeout_switch(struct timeout *new)
 {
-	struct timeout_cpu *toc = new->to_cpu;
+	struct timeout_cpu *otoc = new->to_cpu, *ntoc;
 	CPU_INFO_ITERATOR cii;
 	struct cpu_info *oci, *nci;
 
 	if ((new->to_flags & TIMEOUT_BOUND) != 0)
 		return 0;
 	CPU_INFO_FOREACH(cii, oci) {
-		if (oci->ci_timeout == toc)
+		if (oci->ci_timeout == otoc)
 			break;
 	}
 	CPU_INFO_FOREACH(cii, nci) {
-		if (nci->ci_timeout != toc)
+		if (nci->ci_timeout != otoc)
 			break;
 	}
-	if (oci != NULL && nci != NULL) {
-		struct timeout_cpu *new_toc = nci->ci_timeout;
-
-		if (!mtx_enter_try(&new_toc->toc_mutex)) {
-			printf("timeout: switch cancel\n");
-			timeout_switches[1]++;
-			return 0;
-		}
-		mtx_leave(&toc->toc_mutex);
-#if 0
-		printf("timeout %p: switch cpu: %d -> %d\n",
-		    new, oci->ci_cpuid, nci->ci_cpuid);
-#endif
-		new->to_cpu = new_toc;
-		timeout_switches[0]++;
+	if (oci == NULL || nci == NULL)
+		return 0;
+	ntoc = nci->ci_timeout;
+	if (!mtx_enter_try(&ntoc->toc_mutex)) {
+		printf("timeout: switch cancel\n");
+		timeout_switches[1]++;
+		return 0;
 	}
+	mtx_leave(&otoc->toc_mutex);
+#if 0
+	printf("timeout %p: switch cpu: %d -> %d\n",
+	    new, oci->ci_cpuid, nci->ci_cpuid);
+#endif
+	new->to_cpu = ntoc;
+	timeout_switches[0]++;
 	return 1;
 }
 
