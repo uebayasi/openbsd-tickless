@@ -577,6 +577,9 @@ cpu_boot_secondary_processors(void)
 		ci->ci_randseed = (arc4random() & 0x7fffffff) + 1;
 		cpu_boot_secondary(ci);
 	}
+
+	extern void tsc_delay_init(void);
+	tsc_delay_init();
 }
 
 void

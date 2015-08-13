@@ -97,6 +97,7 @@ define	cpu {[apid = -1]}
 device	cpu
 attach	cpu at mainbus
 file	arch/amd64/amd64/cpu.c	cpu
+file	arch/amd64/amd64/tsc.c	cpu
 
 
 define	lapic
