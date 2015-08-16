@@ -38,6 +38,7 @@ tsc_delay_init(void)
 #endif
 
 	tsc_delay_initialized = 1;
+	delay_func = tsc_delay;
 }
 
 void
