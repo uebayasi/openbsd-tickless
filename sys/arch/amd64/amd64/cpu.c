@@ -578,8 +578,11 @@ cpu_boot_secondary_processors(void)
 		cpu_boot_secondary(ci);
 	}
 
-	extern void tsc_delay_init(void);
-	tsc_delay_init();
+	if ((cpu_info_primary.ci_flags & CPUF_CONST_TSC) != 0) {
+		extern void tsc_delay_init(void);
+
+		tsc_delay_init();
+	}
 }
 
 void
