@@ -1,9 +1,9 @@
 o Calculate exact `next' time in timer_handler()
-o Implement TSC delay(9)
-o Extend timeout(9) as per-CPU
 o Implement HPET timerdev
-o Implement APIC timerdev
 o Make `ticks' unsigned
 o Hide `ticks' from subsystems
 o Provide fake `ticks' for scheduler
 o Make unperiodic hardclock() work
+- Implement TSC delay(9)
+- Extend timeout(9) as per-CPU
+- Implement APIC timerdev
