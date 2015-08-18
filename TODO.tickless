@@ -1,3 +1,6 @@
+o Define ``mode'' (periodic, oneshot, dyntick, ...)
+o Implement mode switch sysctl
+o Revisit & verify timecounter + sbintime_t change
 o Calculate exact `next' time in timer_handler()
 o Implement HPET timerdev
 o Make `ticks' unsigned
