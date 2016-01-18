@@ -1,3 +1,5 @@
+o Understand how clockintr, statclock, and profclock work
+o Understand clock.c (i8254)
 o Define ``mode'' (periodic, oneshot, dyntick, ...)
 o Implement mode switch sysctl
 o Revisit & verify timecounter + sbintime_t change
@@ -7,6 +9,7 @@ o Make `ticks' unsigned
 o Hide `ticks' from subsystems
 o Provide fake `ticks' for scheduler
 o Make unperiodic hardclock() work
+o Implement oneshot timer for OCTEON (TIM_*)
 - Implement TSC delay(9)
 - Extend timeout(9) as per-CPU
 - Implement APIC timerdev
