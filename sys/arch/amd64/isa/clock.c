@@ -183,9 +183,7 @@ clockintr(void *arg)
 		}
 	}
 
-	if (0) { // LAPIC_ONESHOT
 	hardclock(frame);
-	}
 
 	return 1;
 }
@@ -201,10 +199,8 @@ rtcintr(void *arg)
 	* Get them all. (Also, see comment in cpu_initclocks().)
 	*/
 	while (mc146818_read(NULL, MC_REGC) & MC_REGC_PF) {
-		if (0) { // LAPIC_ONESHOT
 		statclock(frame);
 		stat = 1;
-		}
 	}
 
 	return (stat);
@@ -318,12 +314,10 @@ i8254_initclocks(void)
 
 	isa_intr_establish(NULL, 0, IST_PULSE, IPL_CLOCK, clockintr,
 	    0, "clock");
-	if (0) { // LAPIC_ONESHOT
 	isa_intr_establish(NULL, 8, IST_PULSE, IPL_STATCLOCK, rtcintr,
 	    0, "rtc");
 
 	rtcstart();			/* start the mc146818 clock */
-	}
 
 	i8254_inittimecounter();	/* hook the interrupt-based i8254 tc */
 }
