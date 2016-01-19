@@ -4,12 +4,17 @@ o Define ``mode'' (periodic, oneshot, dyntick, ...)
 o Implement mode switch sysctl
 o Revisit & verify timecounter + sbintime_t change
 o Calculate exact `next' time in timer_handler()
+o Schedule hardclock() depending on timeout todo
+o Make timeout hard-tick return `next' time
+o Move softclock code to kern_timeout.c
 o Implement HPET timerdev
 o Make `ticks' unsigned
 o Hide `ticks' from subsystems
 o Provide fake `ticks' for scheduler
 o Make unperiodic hardclock() work
 o Implement oneshot timer for OCTEON (TIM_*)
+o Reduce power consumption (in idle loop)
+o Power management vs. oneshot interrupt
 - Implement TSC delay(9)
 - Extend timeout(9) as per-CPU
 - Implement APIC timerdev
