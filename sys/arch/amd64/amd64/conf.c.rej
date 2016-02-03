@@ -1,0 +1,19 @@
+@@ -165,6 +165,8 @@
+ cdev_decl(drm);
+ #include "vmm.h"
+ cdev_decl(vmm);
++#include "viocon.h"
++cdev_decl(viocon);
+ 
+ #include "wsdisplay.h"
+ #include "wskbd.h"
+@@ -292,7 +294,8 @@
+ 	cdev_pppx_init(NPPPX,pppx),     /* 91: pppx */
+ 	cdev_fuse_init(NFUSE,fuse),	/* 92: fuse */
+ 	cdev_tun_init(NTUN,tap),	/* 93: Ethernet network tunnel */
+-	cdev_ipmi_init(NIPMI,ipmi),	/* 94: ipmi */
++	cdev_tty_init(NVIOCON,viocon),  /* 94: virtio console */
++	cdev_ipmi_init(NIPMI,ipmi),	/* 95: ipmi */
+ };
+ int	nchrdev = nitems(cdevsw);
+ 
